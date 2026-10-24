@@ -1,32 +1,31 @@
 schema: spec-driven
 
-# Project context (optional)
-# Add only constraints that should guide OpenSpec artifacts and workflows.
-# Include constraints an agent cannot infer by reading the code.
-# Keep general project documentation and discoverable codebase facts out.
-# Example:
-#   context: |
-#     Designs and tasks must cover Windows, macOS, and Linux
-#     Write all artifacts in Spanish
+context: |
+  Projeto final do bootcamp DIO (trilha dio-spring-boot-learning-track, módulo 05-spring-ai):
+  API de orçamento com Spring Boot 4, Spring AI 2 (OpenAI), Spring Data JPA e MySQL.
+  Escreva todos os artefatos em português do Brasil.
+  Referência de escopo: docs/proposta-inicial.md (requisitos RF/RNF/D,
+  decisões da seção 7 e ordem dos changes da seção 5).
+  Use apenas padrões e tecnologias ensinados na trilha (seção 3.3 da proposta).
+  Única exceção aprovada: Instancio, somente em testes.
+  Arquitetura em camadas domain/application/infrastructure; o controller chama um caso de uso;
+  regras de negócio ficam no domínio e valem também para o fluxo de Tool Calling.
+  Testes seguem docs/padrao-de-testes.md; ./gradlew test deve passar sem OPENAI_API_KEY.
+  Valores monetários: entrada em centavos (long), saída em reais com duas casas decimais.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always state what is out of scope
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+  proposal:
+    - Referencie os IDs (RF, RNF, D) da proposta inicial atendidos pelo change, quando houver
+    - Declare explicitamente o que fica fora do escopo
+  specs:
+    - Cenários em WHEN/THEN, cobrindo REST e Tool Calling quando a regra valer para ambos
+  design:
+    - Justifique cada decisão citando o módulo da trilha que a fundamenta
+  tasks:
+    - Cada tarefa de código vem acompanhada da tarefa de teste correspondente
+    - A última tarefa de cada change é rodar ./gradlew test
 
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+operations:
+  apply:
+    guidance:
+      - Trabalho em pares - o autor escreve o código; o agente explica cada tarefa, orienta e revisa
