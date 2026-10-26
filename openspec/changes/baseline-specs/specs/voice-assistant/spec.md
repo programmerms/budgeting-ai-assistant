@@ -32,6 +32,10 @@ A IA SHALL ter acesso a uma ferramenta que registra uma transação a partir de 
 - **WHEN** o comando transcrito é "paguei 40 reais na farmácia"
 - **THEN** a IA chama a ferramenta de registro com categoria `PHARMA` e uma transação é salva
 
+#### Scenario: Chamada da ferramenta sem valor
+- **WHEN** a IA chama a ferramenta de registro sem informar o valor
+- **THEN** a chamada falha antes de salvar, o erro técnico volta para a IA e ela pode tentar chamar a ferramenta de novo
+
 ### Requirement: Ferramenta de consulta por categoria
 A IA SHALL ter acesso a uma ferramenta que lista as transações de uma categoria, devolvendo descrição, categoria e valor de cada uma.
 
@@ -40,11 +44,11 @@ A IA SHALL ter acesso a uma ferramenta que lista as transações de uma categori
 - **THEN** a IA chama a ferramenta de consulta com a categoria `AUTO` e responde com base nas transações devolvidas
 
 ### Requirement: Valor informado pela IA (D-01)
-As ferramentas devolvem à IA o valor sem conversão de centavos para reais. Por isso, a resposta falada SHALL refletir esse valor, e a IA pode informar um valor 100 vezes maior que o real. Esse é o efeito do defeito D-01 no fluxo de voz.
+As ferramentas devolvem à IA o valor sem conversão de centavos para reais. O valor falado SHALL depender da interpretação do modelo: ele pode compensar a conversão sozinho ou informar um valor 100 vezes maior que o real. Esse é o efeito do defeito D-01 no fluxo de voz.
 
-#### Scenario: Confirmação com valor errado
+#### Scenario: Confirmação com valor sem conversão
 - **WHEN** a IA registra um gasto de R$ 80,00 (salvo como `8000` centavos)
-- **THEN** a ferramenta devolve o valor `8000.0`, e a resposta da IA pode citar "8000 reais"
+- **THEN** a ferramenta devolve o valor `8000.0`, e a resposta da IA pode citar "R$ 80,00" ou "8000 reais", conforme o modelo interprete o valor
 
 ### Requirement: Instruções da IA
 A IA SHALL receber instruções fixas que a definem como assistente financeiro, encarregado de extrair os dados da transação, usar as ferramentas disponíveis e escolher a categoria mais adequada. As instruções hoje NÃO definem idioma, tamanho ou formato da resposta, nem informam a data atual.
