@@ -4,7 +4,7 @@ Documento de levantamento de requisitos que serve de entrada para o fluxo Spec-D
 
 - **Projeto base:** `05-spring-ai` da trilha [dio-spring-boot-learning-track](https://github.com/digitalinnovationone/dio-spring-boot-learning-track/blob/main/05-spring-ai/README.md) (cópia idêntica ao conteúdo das aulas).
 - **Enunciado:** `../desafio.txt`.
-- **Status:** levantamento concluído; nenhuma implementação iniciada.
+- **Status:** levantamento concluído. O andamento de cada change fica registrado em `openspec/` (`openspec list` mostra os changes em andamento; `openspec/changes/archive/`, os concluídos).
 
 ---
 
@@ -104,7 +104,11 @@ Toda solução deve usar apenas padrões e tecnologias vistos na trilha:
 | `ChatClient`, `@Tool`/`@ToolParam`, `TranscriptionModel`, `TextToSpeechModel`, prompt em `.st` | 05 | RF-06 a RF-10 |
 | Testes `*IT` condicionais com `@EnabledIfEnvironmentVariable` | 05 | Mantidos |
 
-**Decisão consciente:** o projeto base coloca anotações do Spring AI (`@Tool`, `@ToolParam`) na camada `application`. É um vazamento de framework, mas é o padrão ensinado no módulo 05. Ele será mantido por consistência com o curso e citado no README como possível evolução.
+**Decisão revista (Tool Calling na camada `infrastructure`):** o projeto base coloca anotações do Spring AI (`@Tool`, `@ToolParam`) na camada `application`, nos casos de uso e no `PersistTransactionInput`. É um vazamento de framework. A decisão original era mantê-lo por consistência com o módulo 05. Ela foi revista: a IA passa a ser tratada como mais um cliente da aplicação, igual ao HTTP, com um adaptador `infrastructure/ai/TransactionTools` (e records de request próprios com `@ToolParam`) que chama os casos de uso, no mesmo papel do `TransactionController`.
+
+- **Por quê:** os casos de uso deixam de depender do Spring AI, e os dois canais de entrada (HTTP e Tool Calling) ficam simétricos, seguindo a regra de camadas do README da trilha.
+- **Aderência:** as anotações continuam sendo as do módulo 05; muda só a camada onde ficam. Os casos de uso mantêm `@Service`: Spring "núcleo" (injeção de dependência) pode ficar na `application`; integrações específicas (web, JPA, IA) ficam na `infrastructure`.
+- **Quando:** change `move-ai-tools-to-infrastructure` (seção 5), logo depois do `fix-base-defects`, para que a validação (change 2) e as tools novas (change 4) já nasçam no adaptador.
 
 **Exceção aprovada:** o padrão de testes (seção 3.4) usa o Instancio para gerar dados de teste. Ele não faz parte do conteúdo ministrado, mas foi adotado por decisão do autor, reaproveitando o padrão do projeto anterior (`dio-proposal-api`). É uma dependência só de teste (`testImplementation`), sem impacto no código de produção, e deve ser justificada no README.
 
@@ -145,6 +149,7 @@ No SDD, cada change deve ser pequeno, coerente e verificável sozinho. Cada chan
 |---|---|---|---|---|
 | 0 | `baseline-specs` | Especificar o comportamento **atual** do projeto base, sem alterar código. Ao arquivar, as specs vão para `openspec/specs/` e viram a linha de base dos próximos changes | — | `transactions`, `voice-assistant` |
 | 1 | `fix-base-defects` | Corrigir conversão de centavos, leitura do prompt em UTF-8 e tornar a suíte de testes executável (Testcontainers, chave fictícia em testes, Instancio e classes `Support`) | D-01, D-04, D-05, RF-01, RNF-01, RNF-06 | `transactions` |
+| 1b | `move-ai-tools-to-infrastructure` | Mover `@Tool`/`@ToolParam` dos casos de uso para um adaptador em `infrastructure/ai`; casos de uso sem dependência do Spring AI. Refatoração: os testes do change 1 continuam verdes e nenhuma spec muda | Decisão revista da seção 3.3 | (sem mudança de comportamento) |
 | 2 | `add-transaction-validation` | Invariantes no domínio, Bean Validation no request e `GlobalExceptionHandler` | D-03, D-06, RF-02, RF-03 | `transactions` |
 | 3 | `add-transaction-timestamp-and-categories` | `createdAt` automático e novas categorias | D-07, RF-04, RF-05 | `transactions` |
 | 4 | `add-financial-query-tools` | Total por categoria e transações por período (caso de uso, tool e REST) | RF-06, RF-07 | `transactions`, `voice-assistant` |

@@ -157,6 +157,7 @@ A ordem vem da seção 5 da proposta inicial. Cada change só começa depois que
 |---|---|---|
 | 0 | `baseline-specs` | Descrever o sistema como era, inclusive os defeitos |
 | 1 | `fix-base-defects` | Valor em reais, prompt em UTF-8, suíte de testes executável |
+| 1b | `move-ai-tools-to-infrastructure` | Tirar as anotações do Spring AI dos casos de uso (adaptador em `infrastructure/ai`) |
 | 2 | `add-transaction-validation` | Validação dos dados e tratamento de erros |
 | 3 | `add-transaction-timestamp-and-categories` | Data de criação e novas categorias |
 | 4 | `add-financial-query-tools` | Total por categoria e consulta por período |
