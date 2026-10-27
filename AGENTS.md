@@ -21,8 +21,10 @@ Java 25, Spring Boot 4, Spring AI 2 (OpenAI), Spring Data JPA, MySQL (Docker Com
 ```bash
 export OPENAI_API_KEY="..."   # obrigatória para bootRun e para os testes *IT
 ./gradlew bootRun             # sobe a API; o Docker Compose inicia o MySQL
-./gradlew test                # roda a suíte de testes
+./gradlew test                # roda a suíte de testes (exige Docker rodando; não precisa de OPENAI_API_KEY)
 ```
+
+Os testes de integração sobem um MySQL próprio com Testcontainers, por isso o Docker precisa estar rodando. Sem `OPENAI_API_KEY`, os testes `*IT` são ignorados.
 
 ## Arquitetura e convenções
 

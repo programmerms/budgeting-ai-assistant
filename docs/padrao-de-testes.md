@@ -56,14 +56,14 @@ Regras:
 Sem `@Autowired`. Em testes de integração:
 
 ```java
-@SpringBootTest
+@SpringBootTest(properties = "spring.ai.openai.api-key=test-key")
 @Testcontainers
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class JpaTransactionRepositoryIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:9.6");
+    static final MySQLContainer MYSQL = new MySQLContainer("mysql:9.6");
 
     private final TransactionRepository repository;
 
@@ -74,6 +74,11 @@ class JpaTransactionRepositoryIntegrationTest {
 ```
 
 O contêiner MySQL usa a mesma imagem do `compose.yml`, seguindo o uso de Testcontainers com `@ServiceConnection` do módulo 00 da trilha.
+
+- **Testcontainers 2 (Spring Boot 4):** a classe é `org.testcontainers.mysql.MySQLContainer`, sem o genérico `<?>`. A antiga `org.testcontainers.containers.MySQLContainer` está obsoleta.
+- **Chave fictícia:** todo `@SpringBootTest` declara `properties = "spring.ai.openai.api-key=test-key"`, para os beans da OpenAI serem criados sem `OPENAI_API_KEY`. Os testes `*IT` do curso não usam esse atributo.
+- **Testes de API:** além disso, recebem `@AutoConfigureMockMvc` (`org.springframework.boot.webmvc.test.autoconfigure`, do `spring-boot-starter-webmvc-test`) e o `MockMvc` pelo construtor.
+- **Docker:** os testes de integração exigem Docker rodando.
 
 ## 5. Dados de teste: classes `Support` + Instancio
 
@@ -120,7 +125,7 @@ Quando um objeto novo precisar de dados de teste, **crie ou estenda o `Support`*
 
 Campos com regra são sempre fixados no `Support`: valor em centavos (positivo), categoria, descrição e datas. Testes de cálculo e validação (conversão de centavos para reais, invariantes do domínio, totais) usam valores determinísticos, porque o resultado esperado é exato.
 
-**Dependência:** `testImplementation 'org.instancio:instancio-core'` (versão definida no change que a introduzir). Não faz parte do conteúdo das aulas; foi adotada por decisão do autor e é só de teste.
+**Dependência:** `testImplementation 'org.instancio:instancio-core:5.0.2'` (o Spring Boot não gerencia essa versão). Basta o `instancio-core`: os testes usam a API `Instancio.of(...)` diretamente, sem a extensão JUnit (`instancio-junit`). Não faz parte do conteúdo das aulas; foi adotada por decisão do autor e é só de teste.
 
 ## 6. O que testar em cada camada
 
