@@ -27,17 +27,6 @@ O sistema SHALL registrar uma transação por `POST /transactions`, recebendo JS
 - **WHEN** duas transações idênticas são registradas em sequência
 - **THEN** cada uma recebe um `id` diferente
 
-### Requirement: Representação do valor na saída (D-01)
-O valor SHALL ser recebido em centavos. Na saída, o sistema devolve hoje o mesmo número recebido, com duas casas decimais, **sem dividir por 100**. Esse é o defeito D-01: o valor em centavos aparece como se fosse em reais. Vale para a resposta REST e para o retorno das ferramentas da IA.
-
-#### Scenario: Valor em centavos exibido sem conversão
-- **WHEN** uma transação é registrada com `amount` igual a `8000` (R$ 80,00)
-- **THEN** a resposta mostra `amount` igual a `8000.0`, e não `80.00`
-
-#### Scenario: Valor na consulta
-- **WHEN** existe uma transação salva com `amount` igual a `4000` e ela é consultada
-- **THEN** a consulta mostra o valor `4000.0`
-
 ### Requirement: Ausência de validação no registro (D-03)
 O sistema hoje NÃO valida os dados de uma transação. Descrição vazia e valor zero ou negativo SHALL ser aceitos e salvos, tanto pela API REST quanto pela ferramenta de registro chamada pela IA. Esse é o defeito D-03.
 
@@ -89,3 +78,22 @@ As transações registradas SHALL ficar salvas em banco de dados relacional e co
 #### Scenario: Transação disponível na consulta
 - **WHEN** uma transação é registrada em `AUTO` e depois é feita a consulta `GET /transactions/AUTO`
 - **THEN** a transação registrada aparece na lista
+
+### Requirement: Valor em reais na saída
+O valor SHALL ser recebido em centavos, como número inteiro. Na saída, o sistema SHALL devolver o valor em reais, dividido por 100 e com exatamente duas casas decimais. Vale para a resposta REST e para o retorno das ferramentas da IA.
+
+#### Scenario: Valor em centavos convertido para reais
+- **WHEN** uma transação é registrada com `amount` igual a `8000` (R$ 80,00)
+- **THEN** a resposta mostra `amount` igual a `80.00`
+
+#### Scenario: Valor com centavos
+- **WHEN** uma transação é registrada com `amount` igual a `8050`
+- **THEN** a resposta mostra `amount` igual a `80.50`
+
+#### Scenario: Menor valor positivo
+- **WHEN** uma transação é registrada com `amount` igual a `1`
+- **THEN** a resposta mostra `amount` igual a `0.01`
+
+#### Scenario: Valor na consulta
+- **WHEN** existe uma transação salva com `amount` igual a `4000` e ela é consultada
+- **THEN** a consulta mostra o valor `40.00`

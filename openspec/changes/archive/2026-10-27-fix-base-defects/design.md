@@ -64,7 +64,7 @@ Os testes que sobem o contexto declaram `@SpringBootTest(properties = "spring.ai
 
 ### 6. Instancio e classes `Support`
 
-Entra `testImplementation 'org.instancio:instancio-core'`, na versão estável mais recente no momento do apply, já que o Spring Boot não gerencia essa versão. As classes `Support` seguem a seção 5 do padrão: `TestConstants`, `TransactionSupport`, `PersistTransactionInputSupport`, `TransactionRequestSupport` e `TransactionEntitySupport`. Valor (positivo, em centavos), descrição e categoria são sempre fixos; o `id` pode ser aleatório.
+Entra `testImplementation 'org.instancio:instancio-core:5.0.2'`. O Spring Boot não gerencia essa versão; a 5.0.2 foi escolhida pelo autor durante o apply, no lugar da "versão estável mais recente" prevista inicialmente. Só o `instancio-core`: os `Support` usam `Instancio.of(...)` diretamente, sem a extensão JUnit. As classes `Support` seguem a seção 5 do padrão: `TestConstants`, `TransactionSupport`, `PersistTransactionInputSupport`, `TransactionRequestSupport` e `TransactionEntitySupport`. Valor (positivo, em centavos), descrição e categoria são sempre fixos; o `id` pode ser aleatório.
 
 - **Fundamento:** exceção aprovada pelo autor (proposta inicial, seção 3.3). É só dependência de teste.
 
