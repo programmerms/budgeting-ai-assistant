@@ -100,6 +100,8 @@ Um change não reescreve a spec inteira. Ele traz só a **diferença** (delta) e
 - Saiu: "Representação do valor na saída (D-01)"
 - Entrou: "Valor em reais na saída"
 
+**Lição do change 1b:** uma refatoração não muda comportamento, então não tem delta de spec. Mas o validador recusa um change sem nenhum delta. O caminho é declarar `skip_specs: true` no `.openspec.yaml` do change, sem inventar requisito só para passar na validação. Foi o caso do `move-ai-tools-to-infrastructure`, em que a prova de que nada mudou veio de um teste de caracterização: um teste que congela o comportamento atual antes de mexer no código.
+
 ### Por que a linha de base descreve defeitos
 
 O change 0 (`baseline-specs`) registrou o sistema **como ele era**, inclusive os defeitos, cada um com seu ID (D-01, D-03...). Assim, cada change seguinte mostra o antes e o depois no histórico. Os IDs D-01 a D-07 estão definidos em `docs/proposta-inicial.md`, seção 2.

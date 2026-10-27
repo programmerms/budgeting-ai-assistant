@@ -31,6 +31,7 @@ Os testes de integração sobem um MySQL próprio com Testcontainers, por isso o
 - Camadas da trilha: `domain` (modelo, invariantes, contratos), `application` (um caso de uso por capacidade, com `input`/`output`), `infrastructure` (HTTP, JPA e integrações).
 - O controller só adapta HTTP e chama um caso de uso. A orquestração de IA não fica no controller.
 - Regras de negócio ficam no domínio, porque o fluxo de Tool Calling chama os casos de uso sem passar pelo controller.
+- A IA é mais um cliente da aplicação: as anotações do Spring AI (`@Tool`, `@ToolParam`) ficam só no adaptador `infrastructure/ai` (`TransactionTools` e records em `infrastructure/ai/request`), que só converte a entrada e chama os casos de uso, como o controller faz no HTTP. Os casos de uso não dependem do Spring AI.
 - Use `record` para value objects e DTOs, `class` para entidades, IDs fortemente tipados (`TransactionId`) e o Repository Pattern (contrato no domínio, implementação na infraestrutura).
 - Valores monetários: entrada em centavos (`long`), saída em reais com duas casas decimais.
 - Use apenas padrões e tecnologias ensinados na trilha. Única exceção aprovada: Instancio, somente em testes. Qualquer outra dependência nova precisa de aprovação do autor.
