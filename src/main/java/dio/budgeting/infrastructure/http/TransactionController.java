@@ -3,6 +3,7 @@ package dio.budgeting.infrastructure.http;
 import dio.budgeting.application.ListTransactionsByCategoryUseCase;
 import dio.budgeting.application.PersistTransactionUseCase;
 import dio.budgeting.domain.Category;
+import dio.budgeting.infrastructure.ai.TransactionTools;
 import dio.budgeting.infrastructure.http.request.TransactionRequest;
 import dio.budgeting.infrastructure.http.response.TransactionResponse;
 import org.springframework.ai.audio.transcription.TranscriptionModel;
@@ -31,6 +32,7 @@ public class TransactionController {
 
     public TransactionController(PersistTransactionUseCase persistTransactionUseCase,
                                  ListTransactionsByCategoryUseCase listTransactionsByCategoryUseCase,
+                                 TransactionTools transactionTools,
                                  TranscriptionModel transcriptionModel,
                                  @Value("classpath:prompts/system-message.st") Resource systemPrompt,
                                  ChatClient.Builder chatClientBuilder,
@@ -40,7 +42,7 @@ public class TransactionController {
         this.transcriptionModel = transcriptionModel;
         this.chatClient = chatClientBuilder
                 .defaultSystem(systemPrompt.getContentAsString(StandardCharsets.UTF_8))
-                .defaultTools(persistTransactionUseCase, listTransactionsByCategoryUseCase)
+                .defaultTools(transactionTools)
                 .build();
         this.textToSpeechModel = textToSpeechModel;
     }
