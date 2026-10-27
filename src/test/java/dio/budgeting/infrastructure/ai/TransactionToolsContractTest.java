@@ -1,0 +1,114 @@
+package dio.budgeting.infrastructure.ai;
+
+import dio.budgeting.application.ListTransactionsByCategoryUseCase;
+import dio.budgeting.application.PersistTransactionUseCase;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.skyscreamer.jsonassert.JSONAssert;
+import org.skyscreamer.jsonassert.JSONCompareMode;
+import org.springframework.ai.support.ToolCallbacks;
+import org.springframework.ai.tool.definition.ToolDefinition;
+
+import java.util.Arrays;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@ExtendWith(MockitoExtension.class)
+class TransactionToolsContractTest {
+
+    private static final String PERSIST_TRANSACTION_SCHEMA = """
+            {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "object",
+              "properties": {
+                "input": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "integer",
+                      "format": "int64",
+                      "description": "Valor do gasto (em centavos)"
+                    },
+                    "category": {
+                      "type": "string",
+                      "enum": ["GROCERIES", "PHARMA", "AUTO"],
+                      "description": "Categoria de uma transação"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Descrição do gasto"
+                    }
+                  },
+                  "required": ["amount", "category", "description"]
+                }
+              },
+              "required": ["input"],
+              "additionalProperties": false
+            }
+            """;
+
+    private static final String LIST_TRANSACTIONS_BY_CATEGORY_SCHEMA = """
+            {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "object",
+              "properties": {
+                "category": {
+                  "type": "string",
+                  "enum": ["GROCERIES", "PHARMA", "AUTO"],
+                  "description": "Categoria de uma transação"
+                }
+              },
+              "required": ["category"],
+              "additionalProperties": false
+            }
+            """;
+
+    @Mock
+    private PersistTransactionUseCase persistTransactionUseCase;
+
+    @Mock
+    private ListTransactionsByCategoryUseCase listTransactionsByCategoryUseCase;
+
+    @InjectMocks
+    private TransactionTools transactionTools;
+
+    @Test
+    @DisplayName("Given the registered tools When reading the persist transaction definition Then name, description and schema are unchanged")
+    void givenRegisteredToolsWhenReadingThePersistTransactionDefinitionThenNameDescriptionAndSchemaAreUnchanged() throws Exception {
+        final var actual = findToolDefinition("persist-transaction");
+
+        verifyGivenRegisteredToolsWhenReadingThePersistTransactionDefinitionThenNameDescriptionAndSchemaAreUnchanged(actual);
+    }
+
+    @Test
+    @DisplayName("Given the registered tools When reading the list by category definition Then name, description and schema are unchanged")
+    void givenRegisteredToolsWhenReadingTheListByCategoryDefinitionThenNameDescriptionAndSchemaAreUnchanged() throws Exception {
+        final var actual = findToolDefinition("list-transactions-by-category");
+
+        verifyGivenRegisteredToolsWhenReadingTheListByCategoryDefinitionThenNameDescriptionAndSchemaAreUnchanged(actual);
+    }
+
+    private void verifyGivenRegisteredToolsWhenReadingThePersistTransactionDefinitionThenNameDescriptionAndSchemaAreUnchanged(
+            final ToolDefinition actual) throws Exception {
+        assertThat(actual.description()).isEqualTo("Persiste uma nova transação financeira");
+        JSONAssert.assertEquals(PERSIST_TRANSACTION_SCHEMA, actual.inputSchema(), JSONCompareMode.STRICT);
+    }
+
+    private void verifyGivenRegisteredToolsWhenReadingTheListByCategoryDefinitionThenNameDescriptionAndSchemaAreUnchanged(
+            final ToolDefinition actual) throws Exception {
+        assertThat(actual.description()).isEqualTo("Lista transações financeiras por categoria");
+        JSONAssert.assertEquals(LIST_TRANSACTIONS_BY_CATEGORY_SCHEMA, actual.inputSchema(), JSONCompareMode.STRICT);
+    }
+
+    private ToolDefinition findToolDefinition(final String name) {
+        return Arrays.stream(ToolCallbacks.from(transactionTools))
+                .map(callback -> callback.getToolDefinition())
+                .filter(definition -> definition.name().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Tool not registered: " + name));
+    }
+}
