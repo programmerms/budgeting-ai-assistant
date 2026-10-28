@@ -1,20 +1,28 @@
 package dio.budgeting.domain;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.springframework.util.Assert;
 
 @Getter
-@AllArgsConstructor
 public class Transaction {
     private TransactionId id;
     private String description;
     private long amount;
     private Category category;
 
-    public Transaction(String description, long amount, Category category) {
-        this.id = new TransactionId();
+    public Transaction(TransactionId id, String description, long amount, Category category) {
+        Assert.notNull(id, "Transaction ID must not be null");
+        Assert.hasText(description, "Description must not be blank");
+        Assert.isTrue(amount > 0, "Amount must be greater than zero");
+        Assert.notNull(category, "Category must not be null");
+
+        this.id = id;
         this.description = description;
         this.amount = amount;
         this.category = category;
+    }
+
+    public Transaction(String description, long amount, Category category) {
+        this(new TransactionId(), description, amount, category);
     }
 }

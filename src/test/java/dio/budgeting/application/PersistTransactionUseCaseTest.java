@@ -7,6 +7,9 @@ import dio.budgeting.domain.TransactionRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -16,9 +19,12 @@ import static dio.budgeting.support.TestConstants.AMOUNT_IN_REAIS;
 import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction;
 import static dio.budgeting.support.input.PersistTransactionInputSupport.defaultPersistTransactionInput;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.instancio.Select.field;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,6 +48,47 @@ class PersistTransactionUseCaseTest {
         verifyGivenValidInputWhenExecuteIsCalledThenTransactionIsSavedAndReturnedInReais(result, input, saved);
     }
 
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "   "})
+    @DisplayName("Given an input with a blank description When execute is called Then it throws IllegalArgumentException and nothing is saved")
+    void givenInputWithBlankDescriptionWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(
+            final String invalidDescription) {
+        final var input = defaultPersistTransactionInput()
+                .set(field(PersistTransactionInput::description), invalidDescription)
+                .create();
+
+        final var thrown = catchThrowable(() -> useCase.execute(input));
+
+        verifyGivenInputWithBlankDescriptionWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(thrown);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0L, -1L, -500L})
+    @DisplayName("Given an input with a non-positive amount When execute is called Then it throws IllegalArgumentException and nothing is saved")
+    void givenInputWithNonPositiveAmountWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(
+            final long invalidAmount) {
+        final var input = defaultPersistTransactionInput()
+                .set(field(PersistTransactionInput::amount), invalidAmount)
+                .create();
+
+        final var thrown = catchThrowable(() -> useCase.execute(input));
+
+        verifyGivenInputWithNonPositiveAmountWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(thrown);
+    }
+
+    @Test
+    @DisplayName("Given an input with a null category When execute is called Then it throws IllegalArgumentException and nothing is saved")
+    void givenInputWithNullCategoryWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved() {
+        final var input = defaultPersistTransactionInput()
+                .set(field(PersistTransactionInput::category), null)
+                .create();
+
+        final var thrown = catchThrowable(() -> useCase.execute(input));
+
+        verifyGivenInputWithNullCategoryWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(thrown);
+    }
+
     private void setupGivenValidInputWhenExecuteIsCalledThenTransactionIsSavedAndReturnedInReais(
             final Transaction saved) {
         when(transactionRepository.save(any(Transaction.class))).thenReturn(saved);
@@ -60,5 +107,33 @@ class PersistTransactionUseCaseTest {
                 expected.getDescription(),
                 expected.getCategory().name(),
                 AMOUNT_IN_REAIS));
+    }
+
+    private void verifyGivenInputWithBlankDescriptionWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(
+            final Throwable actual) {
+        assertThat(actual)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Description must not be blank");
+        assertNothingPersisted();
+    }
+
+    private void verifyGivenInputWithNonPositiveAmountWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(
+            final Throwable actual) {
+        assertThat(actual)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Amount must be greater than zero");
+        assertNothingPersisted();
+    }
+
+    private void verifyGivenInputWithNullCategoryWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(
+            final Throwable actual) {
+        assertThat(actual)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Category must not be null");
+        assertNothingPersisted();
+    }
+
+    private void assertNothingPersisted() {
+        verifyNoInteractions(transactionRepository);
     }
 }
