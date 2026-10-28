@@ -10,10 +10,13 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 
 @Service
 public class SpringAiVoiceAssistantGateway implements VoiceAssistantGateway {
     private final TranscriptionModel transcriptionModel;
+    private final String systemPromptTemplate;
     private final ChatClient chatClient;
     private final TextToSpeechModel textToSpeechModel;
 
@@ -23,8 +26,9 @@ public class SpringAiVoiceAssistantGateway implements VoiceAssistantGateway {
                                          TransactionTools transactionTools,
                                          TextToSpeechModel textToSpeechModel) throws IOException {
         this.transcriptionModel = transcriptionModel;
+        this.systemPromptTemplate = systemPrompt.getContentAsString(StandardCharsets.UTF_8);
         this.chatClient = chatClientBuilder
-                .defaultSystem(systemPrompt.getContentAsString(StandardCharsets.UTF_8))
+                .defaultSystem(this.systemPromptTemplate)
                 .defaultTools(transactionTools)
                 .build();
         this.textToSpeechModel = textToSpeechModel;
@@ -37,7 +41,14 @@ public class SpringAiVoiceAssistantGateway implements VoiceAssistantGateway {
 
     @Override
     public String chat(String userMessage) {
-        return chatClient.prompt().user(userMessage).call().content();
+        var systemMessage = systemPromptTemplate.replace(
+                "{currentDate}",
+                LocalDate.now(ZoneOffset.UTC).toString());
+        return chatClient.prompt()
+                .system(systemMessage)
+                .user(userMessage)
+                .call()
+                .content();
     }
 
     @Override

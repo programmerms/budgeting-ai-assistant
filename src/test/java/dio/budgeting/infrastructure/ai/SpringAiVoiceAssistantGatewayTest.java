@@ -5,6 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Answers;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.audio.transcription.TranscriptionModel;
@@ -13,6 +14,9 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 
 import static dio.budgeting.support.TestConstants.ASSISTANT_REPLY;
 import static dio.budgeting.support.TestConstants.AUDIO_BYTES;
@@ -33,8 +37,11 @@ class SpringAiVoiceAssistantGatewayTest {
     @Mock
     private ChatClient.Builder chatClientBuilder;
 
-    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    @Mock
     private ChatClient chatClient;
+
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    private ChatClient.ChatClientRequestSpec requestSpec;
 
     @Mock
     private TransactionTools transactionTools;
@@ -71,13 +78,15 @@ class SpringAiVoiceAssistantGatewayTest {
     }
 
     @Test
-    @DisplayName("Given a user message When chat is called Then it delegates to ChatClient and returns the content")
-    void givenUserMessageWhenChatIsCalledThenItDelegatesToChatClientAndReturnsContent() {
-        setupGivenUserMessageWhenChatIsCalledThenItDelegatesToChatClientAndReturnsContent();
+    @DisplayName("Given a user message When chat is called Then it injects the current UTC date into the system prompt and returns the content")
+    void givenUserMessageWhenChatIsCalledThenItInjectsCurrentUtcDateIntoSystemPromptAndReturnsContent() {
+        final var expectedDate = LocalDate.now(ZoneOffset.UTC).toString();
+        setupGivenUserMessageWhenChatIsCalledThenItInjectsCurrentUtcDateIntoSystemPromptAndReturnsContent();
 
         final var result = gateway.chat(USER_MESSAGE);
 
-        verifyGivenUserMessageWhenChatIsCalledThenItDelegatesToChatClientAndReturnsContent(result);
+        verifyGivenUserMessageWhenChatIsCalledThenItInjectsCurrentUtcDateIntoSystemPromptAndReturnsContent(
+                result, expectedDate);
     }
 
     @Test
@@ -101,12 +110,25 @@ class SpringAiVoiceAssistantGatewayTest {
         assertThat(actual).isEqualTo(USER_MESSAGE);
     }
 
-    private void setupGivenUserMessageWhenChatIsCalledThenItDelegatesToChatClientAndReturnsContent() {
-        when(chatClient.prompt().user(USER_MESSAGE).call().content()).thenReturn(ASSISTANT_REPLY);
+    private void setupGivenUserMessageWhenChatIsCalledThenItInjectsCurrentUtcDateIntoSystemPromptAndReturnsContent() {
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.system(anyString())).thenReturn(requestSpec);
+        when(requestSpec.user(USER_MESSAGE)).thenReturn(requestSpec);
+        when(requestSpec.call().content()).thenReturn(ASSISTANT_REPLY);
     }
 
-    private void verifyGivenUserMessageWhenChatIsCalledThenItDelegatesToChatClientAndReturnsContent(
-            final String actual) {
+    private void verifyGivenUserMessageWhenChatIsCalledThenItInjectsCurrentUtcDateIntoSystemPromptAndReturnsContent(
+            final String actual, final String expectedDate) {
+        final var systemPromptCaptor = ArgumentCaptor.forClass(String.class);
+        verify(requestSpec, times(1)).system(systemPromptCaptor.capture());
+
+        assertThat(systemPromptCaptor.getValue())
+                .contains("Você é um assistente financeiro.")
+                .contains(expectedDate)
+                .doesNotContain("{currentDate}")
+                .contains("português do Brasil")
+                .contains("reais")
+                .contains("esclarecimento");
         assertThat(actual).isEqualTo(ASSISTANT_REPLY);
     }
 
