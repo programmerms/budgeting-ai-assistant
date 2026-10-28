@@ -6,6 +6,7 @@ import org.instancio.InstancioApi;
 
 import static dio.budgeting.support.TestConstants.AMOUNT_IN_CENTS;
 import static dio.budgeting.support.TestConstants.CATEGORY;
+import static dio.budgeting.support.TestConstants.CREATED_AT;
 import static dio.budgeting.support.TestConstants.DESCRIPTION;
 import static org.instancio.Select.field;
 
@@ -18,6 +19,7 @@ public final class TransactionSupport {
         return Instancio.of(Transaction.class)
                 .set(field(Transaction::getDescription), DESCRIPTION)
                 .set(field(Transaction::getAmount), AMOUNT_IN_CENTS)
-                .set(field(Transaction::getCategory), CATEGORY);
+                .set(field(Transaction::getCategory), CATEGORY)
+                .set(field(Transaction::getCreatedAt), CREATED_AT);
     }
 }

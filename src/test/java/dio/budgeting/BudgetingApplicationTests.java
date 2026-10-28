@@ -13,7 +13,8 @@ class BudgetingApplicationTests {
 
     @Container
     @ServiceConnection
-    static final MySQLContainer MYSQL = new MySQLContainer("mysql:9.6");
+    static final MySQLContainer MYSQL = new MySQLContainer("mysql:9.6")
+            .withStartupTimeoutSeconds(300);
 
     @Test
     void contextLoads() {

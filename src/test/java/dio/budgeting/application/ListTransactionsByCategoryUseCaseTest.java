@@ -52,6 +52,7 @@ class ListTransactionsByCategoryUseCaseTest {
                 expected.getId().uuid().toString(),
                 expected.getDescription(),
                 expected.getCategory().name(),
-                AMOUNT_IN_REAIS));
+                AMOUNT_IN_REAIS,
+                expected.getCreatedAt()));
     }
 }

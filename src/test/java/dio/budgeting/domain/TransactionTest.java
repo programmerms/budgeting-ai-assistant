@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static dio.budgeting.support.TestConstants.AMOUNT_IN_CENTS;
 import static dio.budgeting.support.TestConstants.CATEGORY;
+import static dio.budgeting.support.TestConstants.CREATED_AT;
 import static dio.budgeting.support.TestConstants.DESCRIPTION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -15,11 +16,21 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 class TransactionTest {
 
     @Test
-    @DisplayName("Given valid fields When creating a Transaction Then it generates an ID and stores the fields")
-    void givenValidFieldsWhenCreatingTransactionThenItGeneratesIdAndStoresFields() {
+    @DisplayName("Given valid fields When creating a Transaction Then it generates an ID, stores the fields and leaves createdAt null")
+    void givenValidFieldsWhenCreatingTransactionThenItGeneratesIdStoresFieldsAndLeavesCreatedAtNull() {
         final var actual = new Transaction(DESCRIPTION, AMOUNT_IN_CENTS, CATEGORY);
 
-        verifyGivenValidFieldsWhenCreatingTransactionThenItGeneratesIdAndStoresFields(actual);
+        verifyGivenValidFieldsWhenCreatingTransactionThenItGeneratesIdStoresFieldsAndLeavesCreatedAtNull(actual);
+    }
+
+    @Test
+    @DisplayName("Given valid fields including createdAt When reconstructing a Transaction Then all fields are stored")
+    void givenValidFieldsIncludingCreatedAtWhenReconstructingTransactionThenAllFieldsAreStored() {
+        final var id = new TransactionId();
+
+        final var actual = new Transaction(id, DESCRIPTION, AMOUNT_IN_CENTS, CATEGORY, CREATED_AT);
+
+        verifyGivenValidFieldsIncludingCreatedAtWhenReconstructingTransactionThenAllFieldsAreStored(actual, id);
     }
 
     @Test
@@ -63,13 +74,23 @@ class TransactionTest {
         verifyGivenNullCategoryWhenCreatingTransactionThenItThrowsIllegalArgumentException(thrown);
     }
 
-    private void verifyGivenValidFieldsWhenCreatingTransactionThenItGeneratesIdAndStoresFields(
+    private void verifyGivenValidFieldsWhenCreatingTransactionThenItGeneratesIdStoresFieldsAndLeavesCreatedAtNull(
             final Transaction actual) {
         assertThat(actual.getId()).isNotNull();
         assertThat(actual.getId().uuid()).isNotNull();
         assertThat(actual.getDescription()).isEqualTo(DESCRIPTION);
         assertThat(actual.getAmount()).isEqualTo(AMOUNT_IN_CENTS);
         assertThat(actual.getCategory()).isEqualTo(CATEGORY);
+        assertThat(actual.getCreatedAt()).isNull();
+    }
+
+    private void verifyGivenValidFieldsIncludingCreatedAtWhenReconstructingTransactionThenAllFieldsAreStored(
+            final Transaction actual, final TransactionId expectedId) {
+        assertThat(actual.getId()).isEqualTo(expectedId);
+        assertThat(actual.getDescription()).isEqualTo(DESCRIPTION);
+        assertThat(actual.getAmount()).isEqualTo(AMOUNT_IN_CENTS);
+        assertThat(actual.getCategory()).isEqualTo(CATEGORY);
+        assertThat(actual.getCreatedAt()).isEqualTo(CREATED_AT);
     }
 
     private void verifyGivenNullTransactionIdWhenCreatingTransactionThenItThrowsIllegalArgumentException(
