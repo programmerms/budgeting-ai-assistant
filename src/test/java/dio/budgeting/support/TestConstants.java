@@ -15,6 +15,9 @@ public final class TestConstants {
     public static final Instant CREATED_AT = Instant.parse("2026-10-01T12:00:00Z");
     public static final LocalDate PERIOD_FROM = LocalDate.of(2026, 10, 1);
     public static final LocalDate PERIOD_TO = LocalDate.of(2026, 10, 31);
+    public static final String USER_MESSAGE = "Gastei 80 reais no mercado";
+    public static final String ASSISTANT_REPLY = "Transação de R$ 80,00 registrada em GROCERIES.";
+    public static final byte[] AUDIO_BYTES = new byte[]{1, 2, 3, 4};
 
     private TestConstants() {
     }
