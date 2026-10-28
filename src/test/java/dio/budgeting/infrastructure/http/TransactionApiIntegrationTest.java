@@ -3,6 +3,7 @@ package dio.budgeting.infrastructure.http;
 import dio.budgeting.domain.Category;
 import dio.budgeting.domain.Transaction;
 import dio.budgeting.domain.TransactionRepository;
+import dio.budgeting.infrastructure.http.request.TextCommandRequest;
 import dio.budgeting.infrastructure.http.request.TransactionRequest;
 import dio.budgeting.infrastructure.persistence.repository.TransactionEntityRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +30,7 @@ import java.time.Instant;
 
 import static dio.budgeting.support.TestConstants.CATEGORY;
 import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction;
+import static dio.budgeting.support.request.TextCommandRequestSupport.defaultTextCommandRequest;
 import static dio.budgeting.support.request.TransactionRequestSupport.defaultTransactionRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -258,6 +260,23 @@ class TransactionApiIntegrationTest {
         verifyGivenEmptyAudioFileWhenPostTransactionsAiIsCalledThenItResponds400WithErrorMessage(result);
     }
 
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "   "})
+    @DisplayName("Given a blank message When POST /transactions/ai/text is called Then it responds 400 indicating message")
+    void givenBlankMessageWhenPostTransactionsAiTextIsCalledThenItResponds400IndicatingMessage(
+            final String invalidMessage) throws Exception {
+        final var request = defaultTextCommandRequest()
+                .set(field(TextCommandRequest::message), invalidMessage)
+                .create();
+
+        final var result = mockMvc.perform(post("/transactions/ai/text")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(request)));
+
+        verifyGivenBlankMessageWhenPostTransactionsAiTextIsCalledThenItResponds400IndicatingMessage(result);
+    }
+
     private void verifyGivenAmountOf8000CentsWhenPostTransactionsIsCalledThenItResponds201WithAmount8000(
             final ResultActions actual, final TransactionRequest request) throws Exception {
         actual.andExpect(status().isCreated())
@@ -388,6 +407,12 @@ class TransactionApiIntegrationTest {
             final ResultActions actual) throws Exception {
         actual.andExpect(status().isBadRequest())
                 .andExpect(content().string("Audio file must not be empty"));
+    }
+
+    private void verifyGivenBlankMessageWhenPostTransactionsAiTextIsCalledThenItResponds400IndicatingMessage(
+            final ResultActions actual) throws Exception {
+        actual.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").isNotEmpty());
     }
 
     private void assertNothingPersisted() {

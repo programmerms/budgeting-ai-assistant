@@ -1,29 +1,37 @@
 package dio.budgeting.infrastructure.http;
 
+import dio.budgeting.application.ExecuteTextCommandUseCase;
+import dio.budgeting.application.ExecuteVoiceCommandUseCase;
 import dio.budgeting.application.ListTransactionsByCategoryUseCase;
 import dio.budgeting.application.ListTransactionsByPeriodUseCase;
 import dio.budgeting.application.PersistTransactionUseCase;
 import dio.budgeting.application.SummarizeTransactionsByCategoryUseCase;
 import dio.budgeting.application.input.TransactionsPeriodInput;
 import dio.budgeting.domain.Category;
-import dio.budgeting.infrastructure.ai.TransactionTools;
+import dio.budgeting.infrastructure.http.request.TextCommandRequest;
 import dio.budgeting.infrastructure.http.request.TransactionRequest;
 import dio.budgeting.infrastructure.http.response.CategorySummaryResponse;
+import dio.budgeting.infrastructure.http.response.TextCommandResponse;
 import dio.budgeting.infrastructure.http.response.TransactionResponse;
 import jakarta.validation.Valid;
-import org.springframework.ai.audio.transcription.TranscriptionModel;
-import org.springframework.ai.audio.tts.TextToSpeechModel;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import org.springframework.http.*;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.Assert;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -34,30 +42,21 @@ public class TransactionController {
     private final ListTransactionsByCategoryUseCase listTransactionsByCategoryUseCase;
     private final SummarizeTransactionsByCategoryUseCase summarizeTransactionsByCategoryUseCase;
     private final ListTransactionsByPeriodUseCase listTransactionsByPeriodUseCase;
-
-    private final TranscriptionModel transcriptionModel;
-    private final ChatClient chatClient;
-    private final TextToSpeechModel textToSpeechModel;
+    private final ExecuteVoiceCommandUseCase executeVoiceCommandUseCase;
+    private final ExecuteTextCommandUseCase executeTextCommandUseCase;
 
     public TransactionController(PersistTransactionUseCase persistTransactionUseCase,
                                  ListTransactionsByCategoryUseCase listTransactionsByCategoryUseCase,
                                  SummarizeTransactionsByCategoryUseCase summarizeTransactionsByCategoryUseCase,
                                  ListTransactionsByPeriodUseCase listTransactionsByPeriodUseCase,
-                                 TransactionTools transactionTools,
-                                 TranscriptionModel transcriptionModel,
-                                 @Value("classpath:prompts/system-message.st") Resource systemPrompt,
-                                 ChatClient.Builder chatClientBuilder,
-                                 TextToSpeechModel textToSpeechModel) throws IOException {
+                                 ExecuteVoiceCommandUseCase executeVoiceCommandUseCase,
+                                 ExecuteTextCommandUseCase executeTextCommandUseCase) {
         this.persistTransactionUseCase = persistTransactionUseCase;
         this.listTransactionsByCategoryUseCase = listTransactionsByCategoryUseCase;
         this.summarizeTransactionsByCategoryUseCase = summarizeTransactionsByCategoryUseCase;
         this.listTransactionsByPeriodUseCase = listTransactionsByPeriodUseCase;
-        this.transcriptionModel = transcriptionModel;
-        this.chatClient = chatClientBuilder
-                .defaultSystem(systemPrompt.getContentAsString(StandardCharsets.UTF_8))
-                .defaultTools(transactionTools)
-                .build();
-        this.textToSpeechModel = textToSpeechModel;
+        this.executeVoiceCommandUseCase = executeVoiceCommandUseCase;
+        this.executeTextCommandUseCase = executeTextCommandUseCase;
     }
 
     @PostMapping
@@ -90,10 +89,7 @@ public class TransactionController {
     @PostMapping(value = "/ai", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "audio/mp3")
     ResponseEntity<Resource> transcribe(@RequestParam("file") MultipartFile file) {
         Assert.isTrue(!file.isEmpty(), "Audio file must not be empty");
-        var userMessage = transcriptionModel.transcribe(file.getResource());
-        var result = chatClient.prompt().user(userMessage).call().content();
-
-        byte[] audio = textToSpeechModel.call(result);
+        byte[] audio = executeVoiceCommandUseCase.execute(file.getResource());
         var resource = new ByteArrayResource(audio);
 
         return ResponseEntity.ok()
@@ -103,5 +99,11 @@ public class TransactionController {
                                 .build()
                                 .toString())
                 .body(resource);
+    }
+
+    @PostMapping("/ai/text")
+    public TextCommandResponse executeTextCommand(@RequestBody @Valid TextCommandRequest request) {
+        var output = executeTextCommandUseCase.execute(request.toInput());
+        return TextCommandResponse.from(output);
     }
 }
