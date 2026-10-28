@@ -9,18 +9,22 @@ import dio.budgeting.infrastructure.persistence.repository.TransactionEntityRepo
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.restdocs.RestDocumentationContextProvider;
+import org.springframework.restdocs.RestDocumentationExtension;
 import org.springframework.test.context.TestConstructor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
@@ -35,6 +39,14 @@ import static dio.budgeting.support.request.TransactionRequestSupport.defaultTra
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.instancio.Select.field;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
+import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.restdocs.payload.PayloadDocumentation.requestFields;
+import static org.springframework.restdocs.payload.PayloadDocumentation.responseFields;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
+import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
+import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -42,8 +54,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(RestDocumentationExtension.class)
 @SpringBootTest(properties = "spring.ai.openai.api-key=test-key")
-@AutoConfigureMockMvc
 @Testcontainers
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class TransactionApiIntegrationTest {
@@ -53,18 +65,20 @@ class TransactionApiIntegrationTest {
     static final MySQLContainer MYSQL = new MySQLContainer("mysql:9.6")
             .withStartupTimeoutSeconds(300);
 
-    private final MockMvc mockMvc;
+    private final WebApplicationContext webApplicationContext;
     private final JsonMapper jsonMapper;
     private final TransactionRepository repository;
     private final TransactionEntityRepository entityRepository;
     private final JdbcTemplate jdbcTemplate;
 
-    TransactionApiIntegrationTest(final MockMvc mockMvc,
+    private MockMvc mockMvc;
+
+    TransactionApiIntegrationTest(final WebApplicationContext webApplicationContext,
                                   final JsonMapper jsonMapper,
                                   final TransactionRepository repository,
                                   final TransactionEntityRepository entityRepository,
                                   final JdbcTemplate jdbcTemplate) {
-        this.mockMvc = mockMvc;
+        this.webApplicationContext = webApplicationContext;
         this.jsonMapper = jsonMapper;
         this.repository = repository;
         this.entityRepository = entityRepository;
@@ -72,7 +86,10 @@ class TransactionApiIntegrationTest {
     }
 
     @BeforeEach
-    void cleanDatabase() {
+    void setUp(final RestDocumentationContextProvider restDocumentation) {
+        this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
+                .apply(documentationConfiguration(restDocumentation))
+                .build();
         entityRepository.deleteAll();
     }
 
@@ -284,7 +301,20 @@ class TransactionApiIntegrationTest {
                 .andExpect(jsonPath("$.description").value(request.description()))
                 .andExpect(jsonPath("$.category").value(request.category().name()))
                 .andExpect(jsonPath("$.createdAt").isNotEmpty())
-                .andExpect(content().string(containsString("\"amount\":80.00")));
+                .andExpect(content().string(containsString("\"amount\":80.00")))
+                .andDo(document("create-transaction",
+                        requestFields(
+                                fieldWithPath("description").description("Descrição do gasto"),
+                                fieldWithPath("category").description("Categoria da transação"),
+                                fieldWithPath("amount").description("Valor do gasto em centavos (ex.: 8000 = R$ 80,00)")
+                        ),
+                        responseFields(
+                                fieldWithPath("id").description("Identificador único da transação (UUID)"),
+                                fieldWithPath("category").description("Categoria da transação"),
+                                fieldWithPath("description").description("Descrição do gasto"),
+                                fieldWithPath("amount").description("Valor em reais com duas casas decimais"),
+                                fieldWithPath("createdAt").description("Data e hora de criação em UTC (ISO-8601)")
+                        )));
     }
 
     private void setupGivenStoredTransactionOf4000CentsWhenGetTransactionsByCategoryIsCalledThenItShowsAmount4000(
@@ -298,7 +328,18 @@ class TransactionApiIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(expected.getId().uuid().toString()))
                 .andExpect(jsonPath("$[0].createdAt").isNotEmpty())
-                .andExpect(content().string(containsString("\"amount\":40.00")));
+                .andExpect(content().string(containsString("\"amount\":40.00")))
+                .andDo(document("get-transactions-by-category",
+                        pathParameters(
+                                parameterWithName("category").description("Categoria a consultar")
+                        ),
+                        responseFields(
+                                fieldWithPath("[].id").description("Identificador único da transação (UUID)"),
+                                fieldWithPath("[].category").description("Categoria da transação"),
+                                fieldWithPath("[].description").description("Descrição do gasto"),
+                                fieldWithPath("[].amount").description("Valor em reais com duas casas decimais"),
+                                fieldWithPath("[].createdAt").description("Data e hora de criação em UTC (ISO-8601)")
+                        )));
     }
 
     private void verifyGivenTransactionWithNewCategoryWhenPostAndGetTransactionsByCategoryAreCalledThenItResponds201And200WithCategoryAndCreatedAt(
@@ -328,7 +369,16 @@ class TransactionApiIntegrationTest {
         actual.andExpect(status().isOk())
                 .andExpect(jsonPath("$.category").value(Category.GROCERIES.name()))
                 .andExpect(jsonPath("$.count").value(2))
-                .andExpect(content().string(containsString("\"total\":120.00")));
+                .andExpect(content().string(containsString("\"total\":120.00")))
+                .andDo(document("get-transactions-summary",
+                        queryParameters(
+                                parameterWithName("category").description("Categoria a resumir")
+                        ),
+                        responseFields(
+                                fieldWithPath("category").description("Categoria consultada"),
+                                fieldWithPath("total").description("Total gasto na categoria em reais com duas casas decimais"),
+                                fieldWithPath("count").description("Quantidade de transações na categoria")
+                        )));
     }
 
     private void verifyGivenNoTransactionsInCategoryWhenGetTransactionsSummaryIsCalledThenItResponds200WithTotalZeroAndCountZero(
@@ -364,7 +414,19 @@ class TransactionApiIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(expected.getId().uuid().toString()))
                 .andExpect(jsonPath("$[0].createdAt").value(containsString("2026-10-15T")))
-                .andExpect(content().string(containsString("\"amount\":80.00")));
+                .andExpect(content().string(containsString("\"amount\":80.00")))
+                .andDo(document("get-transactions-by-period",
+                        queryParameters(
+                                parameterWithName("from").description("Data inicial do período no formato YYYY-MM-DD"),
+                                parameterWithName("to").description("Data final do período no formato YYYY-MM-DD")
+                        ),
+                        responseFields(
+                                fieldWithPath("[].id").description("Identificador único da transação (UUID)"),
+                                fieldWithPath("[].category").description("Categoria da transação"),
+                                fieldWithPath("[].description").description("Descrição do gasto"),
+                                fieldWithPath("[].amount").description("Valor em reais com duas casas decimais"),
+                                fieldWithPath("[].createdAt").description("Data e hora de criação em UTC (ISO-8601)")
+                        )));
     }
 
     private void verifyGivenStartDateAfterEndDateWhenGetTransactionsByPeriodIsCalledThenItResponds400WithErrorMessage(

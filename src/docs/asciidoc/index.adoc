@@ -1,0 +1,145 @@
+= API de Orçamento com IA (Budgeting AI Assistant)
+:toc: left
+:toclevels: 3
+:sectnums:
+:snippets: {snippets}
+
+== Introdução
+
+Esta API permite registrar e consultar transações financeiras (gastos) tanto por endpoints REST convencionais quanto por comandos em linguagem natural (voz e texto) processados com Inteligência Artificial e Tool Calling (Spring AI).
+
+== Convenção Monetária e Categorias
+
+* *Entrada (`amount`)*: informada em *centavos* (`long`), evitando erros de arredondamento de ponto flutuante (ex.: `8000` representa `R$ 80,00`).
+* *Saída (`amount` / `total`)*: devolvida em *reais* (`BigDecimal`) com exatamente duas casas decimais (ex.: `80.00`).
+* *Categorias disponíveis (`Category`)*: `GROCERIES`, `PHARMA`, `AUTO`, `RESTAURANT`, `SHOPPING`, `TRANSPORT`, `HEALTH`, `LEISURE` e `OTHER`.
+
+---
+
+== Registrar Transação
+
+Registra uma nova transação financeira via REST (`POST /transactions`).
+
+=== Requisição
+
+include::{snippets}/create-transaction/curl-request.adoc[]
+
+=== Corpo da Requisição
+
+include::{snippets}/create-transaction/request-body.adoc[]
+
+=== Campos da Requisição
+
+include::{snippets}/create-transaction/request-fields.adoc[]
+
+=== Resposta
+
+include::{snippets}/create-transaction/http-response.adoc[]
+
+=== Corpo da Resposta
+
+include::{snippets}/create-transaction/response-body.adoc[]
+
+=== Campos da Resposta
+
+include::{snippets}/create-transaction/response-fields.adoc[]
+
+---
+
+== Listar Transações por Categoria
+
+Lista todas as transações registradas em uma categoria específica (`GET /transactions/{category}`).
+
+=== Requisição
+
+include::{snippets}/get-transactions-by-category/curl-request.adoc[]
+
+=== Parâmetros de Caminho
+
+include::{snippets}/get-transactions-by-category/path-parameters.adoc[]
+
+=== Resposta
+
+include::{snippets}/get-transactions-by-category/http-response.adoc[]
+
+=== Corpo da Resposta
+
+include::{snippets}/get-transactions-by-category/response-body.adoc[]
+
+=== Campos da Resposta
+
+include::{snippets}/get-transactions-by-category/response-fields.adoc[]
+
+---
+
+== Resumo de Gastos por Categoria
+
+Retorna o total gasto (em reais) e a quantidade de transações de uma categoria (`GET /transactions/summary?category=...`).
+
+=== Requisição
+
+include::{snippets}/get-transactions-summary/curl-request.adoc[]
+
+=== Parâmetros de Consulta
+
+include::{snippets}/get-transactions-summary/query-parameters.adoc[]
+
+=== Resposta
+
+include::{snippets}/get-transactions-summary/http-response.adoc[]
+
+=== Corpo da Resposta
+
+include::{snippets}/get-transactions-summary/response-body.adoc[]
+
+=== Campos da Resposta
+
+include::{snippets}/get-transactions-summary/response-fields.adoc[]
+
+---
+
+== Listar Transações por Período
+
+Lista as transações criadas dentro de um intervalo inclusivo de datas em UTC (`GET /transactions?from=YYYY-MM-DD&to=YYYY-MM-DD`).
+
+=== Requisição
+
+include::{snippets}/get-transactions-by-period/curl-request.adoc[]
+
+=== Parâmetros de Consulta
+
+include::{snippets}/get-transactions-by-period/query-parameters.adoc[]
+
+=== Resposta
+
+include::{snippets}/get-transactions-by-period/http-response.adoc[]
+
+=== Corpo da Resposta
+
+include::{snippets}/get-transactions-by-period/response-body.adoc[]
+
+=== Campos da Resposta
+
+include::{snippets}/get-transactions-by-period/response-fields.adoc[]
+
+---
+
+== Comandos de IA (Voz e Texto)
+
+Além dos endpoints REST acima, a API oferece dois canais conversacionais acionados pelo assistente financeiro:
+
+* `POST /transactions/ai` (`multipart/form-data`, campo `file`): recebe um arquivo de áudio, transcreve com Whisper (`whisper-1`), executa Tool Calling com `gpt-4o-mini` e devolve um arquivo `audio/mp3` (`gpt-4o-mini-tts`).
+* `POST /transactions/ai/text` (`application/json`, `{"message": "..."}`): recebe o comando em texto e devolve `{"message": "..."}` com a resposta textual da IA após acionar as ferramentas necessárias.
+
+---
+
+== Códigos de Status
+
+|===
+| Código | Descrição
+
+| 200 OK       | Consulta ou comando executado com sucesso
+| 201 Created  | Transação criada com sucesso
+| 400 Bad Request | Erro de validação nos campos, parâmetros ou arquivo de áudio vazio
+| 500 Internal Server Error | Falha inesperada ou indisponibilidade do provedor externo de IA
+|===
