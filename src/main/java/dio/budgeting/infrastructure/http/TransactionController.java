@@ -1,10 +1,14 @@
 package dio.budgeting.infrastructure.http;
 
 import dio.budgeting.application.ListTransactionsByCategoryUseCase;
+import dio.budgeting.application.ListTransactionsByPeriodUseCase;
 import dio.budgeting.application.PersistTransactionUseCase;
+import dio.budgeting.application.SummarizeTransactionsByCategoryUseCase;
+import dio.budgeting.application.input.TransactionsPeriodInput;
 import dio.budgeting.domain.Category;
 import dio.budgeting.infrastructure.ai.TransactionTools;
 import dio.budgeting.infrastructure.http.request.TransactionRequest;
+import dio.budgeting.infrastructure.http.response.CategorySummaryResponse;
 import dio.budgeting.infrastructure.http.response.TransactionResponse;
 import jakarta.validation.Valid;
 import org.springframework.ai.audio.transcription.TranscriptionModel;
@@ -20,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -27,6 +32,8 @@ import java.util.List;
 public class TransactionController {
     private final PersistTransactionUseCase persistTransactionUseCase;
     private final ListTransactionsByCategoryUseCase listTransactionsByCategoryUseCase;
+    private final SummarizeTransactionsByCategoryUseCase summarizeTransactionsByCategoryUseCase;
+    private final ListTransactionsByPeriodUseCase listTransactionsByPeriodUseCase;
 
     private final TranscriptionModel transcriptionModel;
     private final ChatClient chatClient;
@@ -34,6 +41,8 @@ public class TransactionController {
 
     public TransactionController(PersistTransactionUseCase persistTransactionUseCase,
                                  ListTransactionsByCategoryUseCase listTransactionsByCategoryUseCase,
+                                 SummarizeTransactionsByCategoryUseCase summarizeTransactionsByCategoryUseCase,
+                                 ListTransactionsByPeriodUseCase listTransactionsByPeriodUseCase,
                                  TransactionTools transactionTools,
                                  TranscriptionModel transcriptionModel,
                                  @Value("classpath:prompts/system-message.st") Resource systemPrompt,
@@ -41,6 +50,8 @@ public class TransactionController {
                                  TextToSpeechModel textToSpeechModel) throws IOException {
         this.persistTransactionUseCase = persistTransactionUseCase;
         this.listTransactionsByCategoryUseCase = listTransactionsByCategoryUseCase;
+        this.summarizeTransactionsByCategoryUseCase = summarizeTransactionsByCategoryUseCase;
+        this.listTransactionsByPeriodUseCase = listTransactionsByPeriodUseCase;
         this.transcriptionModel = transcriptionModel;
         this.chatClient = chatClientBuilder
                 .defaultSystem(systemPrompt.getContentAsString(StandardCharsets.UTF_8))
@@ -54,6 +65,21 @@ public class TransactionController {
     public TransactionResponse createTransaction(@RequestBody @Valid TransactionRequest request) {
         var transaction = persistTransactionUseCase.execute(request.toInput());
         return TransactionResponse.from(transaction);
+    }
+
+    @GetMapping("/summary")
+    public CategorySummaryResponse summarizeTransactionsByCategory(@RequestParam Category category) {
+        var summary = summarizeTransactionsByCategoryUseCase.execute(category);
+        return CategorySummaryResponse.from(summary);
+    }
+
+    @GetMapping
+    public List<TransactionResponse> readTransactionsByPeriod(@RequestParam LocalDate from,
+                                                              @RequestParam LocalDate to) {
+        return listTransactionsByPeriodUseCase.execute(new TransactionsPeriodInput(from, to))
+                .stream()
+                .map(TransactionResponse::from)
+                .toList();
     }
 
     @GetMapping("/{category}")

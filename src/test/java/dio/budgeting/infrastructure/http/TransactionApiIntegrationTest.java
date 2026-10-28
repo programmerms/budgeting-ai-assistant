@@ -1,5 +1,6 @@
 package dio.budgeting.infrastructure.http;
 
+import dio.budgeting.domain.Category;
 import dio.budgeting.domain.Transaction;
 import dio.budgeting.domain.TransactionRepository;
 import dio.budgeting.infrastructure.http.request.TransactionRequest;
@@ -14,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.TestConstructor;
 import org.springframework.test.web.servlet.MockMvc;
@@ -22,6 +24,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 import tools.jackson.databind.json.JsonMapper;
+
+import java.time.Instant;
 
 import static dio.budgeting.support.TestConstants.CATEGORY;
 import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction;
@@ -44,21 +48,25 @@ class TransactionApiIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final MySQLContainer MYSQL = new MySQLContainer("mysql:9.6");
+    static final MySQLContainer MYSQL = new MySQLContainer("mysql:9.6")
+            .withStartupTimeoutSeconds(300);
 
     private final MockMvc mockMvc;
     private final JsonMapper jsonMapper;
     private final TransactionRepository repository;
     private final TransactionEntityRepository entityRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     TransactionApiIntegrationTest(final MockMvc mockMvc,
                                   final JsonMapper jsonMapper,
                                   final TransactionRepository repository,
-                                  final TransactionEntityRepository entityRepository) {
+                                  final TransactionEntityRepository entityRepository,
+                                  final JdbcTemplate jdbcTemplate) {
         this.mockMvc = mockMvc;
         this.jsonMapper = jsonMapper;
         this.repository = repository;
         this.entityRepository = entityRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @BeforeEach
@@ -91,6 +99,94 @@ class TransactionApiIntegrationTest {
         final var result = mockMvc.perform(get("/transactions/{category}", CATEGORY));
 
         verifyGivenStoredTransactionOf4000CentsWhenGetTransactionsByCategoryIsCalledThenItShowsAmount4000(result, stored);
+    }
+
+    @Test
+    @DisplayName("Given a transaction with a new category When POST and GET /transactions/{category} are called Then it responds 201 and 200 with the category and createdAt")
+    void givenTransactionWithNewCategoryWhenPostAndGetTransactionsByCategoryAreCalledThenItResponds201And200WithCategoryAndCreatedAt() throws Exception {
+        final var request = defaultTransactionRequest()
+                .set(field(TransactionRequest::category), Category.RESTAURANT)
+                .create();
+
+        final var postResult = mockMvc.perform(post("/transactions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(request)));
+        final var getResult = mockMvc.perform(get("/transactions/{category}", Category.RESTAURANT));
+
+        verifyGivenTransactionWithNewCategoryWhenPostAndGetTransactionsByCategoryAreCalledThenItResponds201And200WithCategoryAndCreatedAt(
+                postResult, getResult, request);
+    }
+
+    @Test
+    @DisplayName("Given stored transactions in a category When GET /transactions/summary is called Then it responds 200 with total and count")
+    void givenStoredTransactionsInCategoryWhenGetTransactionsSummaryIsCalledThenItResponds200WithTotalAndCount() throws Exception {
+        final var first = defaultTransaction()
+                .set(field(Transaction::getCategory), Category.GROCERIES)
+                .set(field(Transaction::getAmount), 8000L)
+                .create();
+        final var second = defaultTransaction()
+                .set(field(Transaction::getCategory), Category.GROCERIES)
+                .set(field(Transaction::getAmount), 4000L)
+                .create();
+        final var otherCategory = defaultTransaction()
+                .set(field(Transaction::getCategory), Category.AUTO)
+                .set(field(Transaction::getAmount), 5000L)
+                .create();
+        setupGivenStoredTransactionsInCategoryWhenGetTransactionsSummaryIsCalledThenItResponds200WithTotalAndCount(
+                first, second, otherCategory);
+
+        final var result = mockMvc.perform(get("/transactions/summary")
+                .param("category", Category.GROCERIES.name()));
+
+        verifyGivenStoredTransactionsInCategoryWhenGetTransactionsSummaryIsCalledThenItResponds200WithTotalAndCount(result);
+    }
+
+    @Test
+    @DisplayName("Given no transactions in a category When GET /transactions/summary is called Then it responds 200 with total 0.00 and count 0")
+    void givenNoTransactionsInCategoryWhenGetTransactionsSummaryIsCalledThenItResponds200WithTotalZeroAndCountZero() throws Exception {
+        final var result = mockMvc.perform(get("/transactions/summary")
+                .param("category", Category.PHARMA.name()));
+
+        verifyGivenNoTransactionsInCategoryWhenGetTransactionsSummaryIsCalledThenItResponds200WithTotalZeroAndCountZero(result);
+    }
+
+    @Test
+    @DisplayName("Given an invalid category When GET /transactions/summary is called Then it responds 400")
+    void givenInvalidCategoryWhenGetTransactionsSummaryIsCalledThenItResponds400() throws Exception {
+        final var result = mockMvc.perform(get("/transactions/summary")
+                .param("category", "INVALID"));
+
+        verifyGivenInvalidCategoryWhenGetTransactionsSummaryIsCalledThenItResponds400(result);
+    }
+
+    @Test
+    @DisplayName("Given transactions inside and outside a period When GET /transactions is called with from and to Then it responds 200 with only the transactions inside")
+    void givenTransactionsInsideAndOutsidePeriodWhenGetTransactionsByPeriodIsCalledThenItResponds200WithOnlyTransactionsInside() throws Exception {
+        final var inside = defaultTransaction()
+                .set(field(Transaction::getAmount), 8000L)
+                .create();
+        final var outside = defaultTransaction()
+                .set(field(Transaction::getAmount), 4000L)
+                .create();
+        setupGivenTransactionsInsideAndOutsidePeriodWhenGetTransactionsByPeriodIsCalledThenItResponds200WithOnlyTransactionsInside(
+                inside, outside);
+
+        final var result = mockMvc.perform(get("/transactions")
+                .param("from", "2026-10-01")
+                .param("to", "2026-10-31"));
+
+        verifyGivenTransactionsInsideAndOutsidePeriodWhenGetTransactionsByPeriodIsCalledThenItResponds200WithOnlyTransactionsInside(
+                result, inside);
+    }
+
+    @Test
+    @DisplayName("Given a start date after the end date When GET /transactions is called Then it responds 400 with an error message")
+    void givenStartDateAfterEndDateWhenGetTransactionsByPeriodIsCalledThenItResponds400WithErrorMessage() throws Exception {
+        final var result = mockMvc.perform(get("/transactions")
+                .param("from", "2026-10-31")
+                .param("to", "2026-10-01"));
+
+        verifyGivenStartDateAfterEndDateWhenGetTransactionsByPeriodIsCalledThenItResponds400WithErrorMessage(result);
     }
 
     @ParameterizedTest
@@ -168,6 +264,7 @@ class TransactionApiIntegrationTest {
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.description").value(request.description()))
                 .andExpect(jsonPath("$.category").value(request.category().name()))
+                .andExpect(jsonPath("$.createdAt").isNotEmpty())
                 .andExpect(content().string(containsString("\"amount\":80.00")));
     }
 
@@ -181,7 +278,80 @@ class TransactionApiIntegrationTest {
         actual.andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(expected.getId().uuid().toString()))
+                .andExpect(jsonPath("$[0].createdAt").isNotEmpty())
                 .andExpect(content().string(containsString("\"amount\":40.00")));
+    }
+
+    private void verifyGivenTransactionWithNewCategoryWhenPostAndGetTransactionsByCategoryAreCalledThenItResponds201And200WithCategoryAndCreatedAt(
+            final ResultActions postActual, final ResultActions getActual, final TransactionRequest request) throws Exception {
+        postActual.andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").isNotEmpty())
+                .andExpect(jsonPath("$.category").value(Category.RESTAURANT.name()))
+                .andExpect(jsonPath("$.description").value(request.description()))
+                .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+        getActual.andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].category").value(Category.RESTAURANT.name()))
+                .andExpect(jsonPath("$[0].description").value(request.description()))
+                .andExpect(jsonPath("$[0].createdAt").isNotEmpty());
+    }
+
+    private void setupGivenStoredTransactionsInCategoryWhenGetTransactionsSummaryIsCalledThenItResponds200WithTotalAndCount(
+            final Transaction first, final Transaction second, final Transaction otherCategory) {
+        repository.save(first);
+        repository.save(second);
+        repository.save(otherCategory);
+    }
+
+    private void verifyGivenStoredTransactionsInCategoryWhenGetTransactionsSummaryIsCalledThenItResponds200WithTotalAndCount(
+            final ResultActions actual) throws Exception {
+        actual.andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value(Category.GROCERIES.name()))
+                .andExpect(jsonPath("$.count").value(2))
+                .andExpect(content().string(containsString("\"total\":120.00")));
+    }
+
+    private void verifyGivenNoTransactionsInCategoryWhenGetTransactionsSummaryIsCalledThenItResponds200WithTotalZeroAndCountZero(
+            final ResultActions actual) throws Exception {
+        actual.andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value(Category.PHARMA.name()))
+                .andExpect(jsonPath("$.count").value(0))
+                .andExpect(content().string(containsString("\"total\":0.00")));
+    }
+
+    private void verifyGivenInvalidCategoryWhenGetTransactionsSummaryIsCalledThenItResponds400(
+            final ResultActions actual) throws Exception {
+        actual.andExpect(status().isBadRequest());
+    }
+
+    private void setupGivenTransactionsInsideAndOutsidePeriodWhenGetTransactionsByPeriodIsCalledThenItResponds200WithOnlyTransactionsInside(
+            final Transaction inside, final Transaction outside) {
+        repository.save(inside);
+        repository.save(outside);
+        jdbcTemplate.update(
+                "UPDATE transaction_entity SET created_at = ? WHERE id = UUID_TO_BIN(?)",
+                Instant.parse("2026-10-15T12:00:00Z"),
+                inside.getId().uuid().toString());
+        jdbcTemplate.update(
+                "UPDATE transaction_entity SET created_at = ? WHERE id = UUID_TO_BIN(?)",
+                Instant.parse("2026-11-05T12:00:00Z"),
+                outside.getId().uuid().toString());
+    }
+
+    private void verifyGivenTransactionsInsideAndOutsidePeriodWhenGetTransactionsByPeriodIsCalledThenItResponds200WithOnlyTransactionsInside(
+            final ResultActions actual, final Transaction expected) throws Exception {
+        actual.andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(expected.getId().uuid().toString()))
+                .andExpect(jsonPath("$[0].createdAt").value(containsString("2026-10-15T")))
+                .andExpect(content().string(containsString("\"amount\":80.00")));
+    }
+
+    private void verifyGivenStartDateAfterEndDateWhenGetTransactionsByPeriodIsCalledThenItResponds400WithErrorMessage(
+            final ResultActions actual) throws Exception {
+        actual.andExpect(status().isBadRequest())
+                .andExpect(content().string("Start date must not be after end date"));
     }
 
     private void verifyGivenBlankDescriptionWhenPostTransactionsIsCalledThenItResponds400IndicatingDescriptionAndSavesNothing(
