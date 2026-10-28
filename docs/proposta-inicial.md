@@ -25,7 +25,7 @@ O enunciado sugere as seguintes evoluções: novos tipos de consulta financeira,
 
 ### 1.2 Objetivo desta proposta
 
-O projeto será usado num processo de possível contratação. Por isso, a entrega precisa ser **utilizável** (roda, é testável e está documentada) e **100% aderente ao conteúdo ministrado** (arquitetura, padrões e tecnologias da trilha).
+O projeto será ao final ter um projeto que sirva de modelo para proximas implementações. Por isso, a entrega precisa ser **utilizável** (roda, é testável e está documentada) e **100% aderente ao conteúdo ministrado** (arquitetura, padrões e tecnologias da trilha).
 
 ### 1.3 Estado atual (observado no código)
 
