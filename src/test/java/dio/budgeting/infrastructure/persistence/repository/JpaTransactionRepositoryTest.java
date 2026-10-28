@@ -11,9 +11,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.List;
 
 import static dio.budgeting.support.TestConstants.CATEGORY;
+import static dio.budgeting.support.TestConstants.CREATED_AT;
 import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction;
 import static dio.budgeting.support.entity.TransactionEntitySupport.defaultTransactionEntity;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,6 +58,21 @@ class JpaTransactionRepositoryTest {
                 result, entity);
     }
 
+    @Test
+    @DisplayName("Given stored entities When findAllByCreatedAtBetween is called Then the entities in the period are returned as domain")
+    void givenStoredEntitiesWhenFindAllByCreatedAtBetweenIsCalledThenTheEntitiesInPeriodAreReturnedAsDomain() {
+        final var from = CREATED_AT.minusSeconds(3600);
+        final var to = CREATED_AT.plusSeconds(3600);
+        final var entity = defaultTransactionEntity().create();
+        setupGivenStoredEntitiesWhenFindAllByCreatedAtBetweenIsCalledThenTheEntitiesInPeriodAreReturnedAsDomain(
+                from, to, entity);
+
+        final var result = repository.findAllByCreatedAtBetween(from, to);
+
+        verifyGivenStoredEntitiesWhenFindAllByCreatedAtBetweenIsCalledThenTheEntitiesInPeriodAreReturnedAsDomain(
+                result, from, to, entity);
+    }
+
     private void setupGivenTransactionWhenSaveIsCalledThenItIsSavedAsEntityAndTheSavedEntityIsReturnedAsDomain(
             final TransactionEntity savedEntity) {
         when(transactionEntityRepository.save(any(TransactionEntity.class))).thenReturn(savedEntity);
@@ -69,7 +86,8 @@ class JpaTransactionRepositoryTest {
                 transaction.getId().uuid(),
                 transaction.getDescription(),
                 transaction.getAmount(),
-                transaction.getCategory()));
+                transaction.getCategory(),
+                transaction.getCreatedAt()));
 
         assertThat(actual).usingRecursiveComparison().isEqualTo(toExpectedDomain(savedEntity));
     }
@@ -87,11 +105,25 @@ class JpaTransactionRepositoryTest {
                 .containsExactly(toExpectedDomain(entity));
     }
 
+    private void setupGivenStoredEntitiesWhenFindAllByCreatedAtBetweenIsCalledThenTheEntitiesInPeriodAreReturnedAsDomain(
+            final Instant from, final Instant to, final TransactionEntity entity) {
+        when(transactionEntityRepository.findAllByCreatedAtBetween(from, to)).thenReturn(List.of(entity));
+    }
+
+    private void verifyGivenStoredEntitiesWhenFindAllByCreatedAtBetweenIsCalledThenTheEntitiesInPeriodAreReturnedAsDomain(
+            final List<Transaction> actual, final Instant from, final Instant to, final TransactionEntity entity) {
+        verify(transactionEntityRepository, times(1)).findAllByCreatedAtBetween(from, to);
+        assertThat(actual)
+                .usingRecursiveFieldByFieldElementComparator()
+                .containsExactly(toExpectedDomain(entity));
+    }
+
     private Transaction toExpectedDomain(final TransactionEntity entity) {
         return new Transaction(
                 new TransactionId(entity.getId()),
                 entity.getDescription(),
                 entity.getAmount(),
-                entity.getCategory());
+                entity.getCategory(),
+                entity.getCreatedAt());
     }
 }

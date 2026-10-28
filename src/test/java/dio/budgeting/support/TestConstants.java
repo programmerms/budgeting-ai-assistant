@@ -3,6 +3,8 @@ package dio.budgeting.support;
 import dio.budgeting.domain.Category;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
 
 public final class TestConstants {
 
@@ -10,6 +12,9 @@ public final class TestConstants {
     public static final long AMOUNT_IN_CENTS = 8000L;
     public static final BigDecimal AMOUNT_IN_REAIS = new BigDecimal("80.00");
     public static final Category CATEGORY = Category.GROCERIES;
+    public static final Instant CREATED_AT = Instant.parse("2026-10-01T12:00:00Z");
+    public static final LocalDate PERIOD_FROM = LocalDate.of(2026, 10, 1);
+    public static final LocalDate PERIOD_TO = LocalDate.of(2026, 10, 31);
 
     private TestConstants() {
     }
