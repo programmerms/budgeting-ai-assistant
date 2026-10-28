@@ -7,10 +7,14 @@ import dio.budgeting.infrastructure.persistence.repository.TransactionEntityRepo
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.TestConstructor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -22,9 +26,11 @@ import tools.jackson.databind.json.JsonMapper;
 import static dio.budgeting.support.TestConstants.CATEGORY;
 import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction;
 import static dio.budgeting.support.request.TransactionRequestSupport.defaultTransactionRequest;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.instancio.Select.field;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -87,6 +93,75 @@ class TransactionApiIntegrationTest {
         verifyGivenStoredTransactionOf4000CentsWhenGetTransactionsByCategoryIsCalledThenItShowsAmount4000(result, stored);
     }
 
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "   "})
+    @DisplayName("Given a blank description When POST /transactions is called Then it responds 400 indicating description and saves nothing")
+    void givenBlankDescriptionWhenPostTransactionsIsCalledThenItResponds400IndicatingDescriptionAndSavesNothing(
+            final String invalidDescription) throws Exception {
+        final var request = defaultTransactionRequest()
+                .set(field(TransactionRequest::description), invalidDescription)
+                .create();
+
+        final var result = mockMvc.perform(post("/transactions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(request)));
+
+        verifyGivenBlankDescriptionWhenPostTransactionsIsCalledThenItResponds400IndicatingDescriptionAndSavesNothing(result);
+    }
+
+    @ParameterizedTest
+    @ValueSource(longs = {0L, -500L})
+    @DisplayName("Given a non-positive amount When POST /transactions is called Then it responds 400 indicating amount and saves nothing")
+    void givenNonPositiveAmountWhenPostTransactionsIsCalledThenItResponds400IndicatingAmountAndSavesNothing(
+            final long invalidAmount) throws Exception {
+        final var request = defaultTransactionRequest()
+                .set(field(TransactionRequest::amount), invalidAmount)
+                .create();
+
+        final var result = mockMvc.perform(post("/transactions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(request)));
+
+        verifyGivenNonPositiveAmountWhenPostTransactionsIsCalledThenItResponds400IndicatingAmountAndSavesNothing(result);
+    }
+
+    @Test
+    @DisplayName("Given a null category When POST /transactions is called Then it responds 400 indicating category and saves nothing")
+    void givenNullCategoryWhenPostTransactionsIsCalledThenItResponds400IndicatingCategoryAndSavesNothing() throws Exception {
+        final var request = defaultTransactionRequest()
+                .set(field(TransactionRequest::category), null)
+                .create();
+
+        final var result = mockMvc.perform(post("/transactions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(request)));
+
+        verifyGivenNullCategoryWhenPostTransactionsIsCalledThenItResponds400IndicatingCategoryAndSavesNothing(result);
+    }
+
+    @Test
+    @DisplayName("Given multiple invalid fields When POST /transactions is called Then it responds 400 with all invalid fields and saves nothing")
+    void givenMultipleInvalidFieldsWhenPostTransactionsIsCalledThenItResponds400WithAllInvalidFieldsAndSavesNothing() throws Exception {
+        final var request = new TransactionRequest("", null, 0L);
+
+        final var result = mockMvc.perform(post("/transactions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonMapper.writeValueAsString(request)));
+
+        verifyGivenMultipleInvalidFieldsWhenPostTransactionsIsCalledThenItResponds400WithAllInvalidFieldsAndSavesNothing(result);
+    }
+
+    @Test
+    @DisplayName("Given an empty audio file When POST /transactions/ai is called Then it responds 400 with an error message")
+    void givenEmptyAudioFileWhenPostTransactionsAiIsCalledThenItResponds400WithErrorMessage() throws Exception {
+        final var emptyFile = new MockMultipartFile("file", "empty.m4a", "audio/m4a", new byte[0]);
+
+        final var result = mockMvc.perform(multipart("/transactions/ai").file(emptyFile));
+
+        verifyGivenEmptyAudioFileWhenPostTransactionsAiIsCalledThenItResponds400WithErrorMessage(result);
+    }
+
     private void verifyGivenAmountOf8000CentsWhenPostTransactionsIsCalledThenItResponds201WithAmount8000(
             final ResultActions actual, final TransactionRequest request) throws Exception {
         actual.andExpect(status().isCreated())
@@ -107,5 +182,45 @@ class TransactionApiIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(expected.getId().uuid().toString()))
                 .andExpect(content().string(containsString("\"amount\":40.00")));
+    }
+
+    private void verifyGivenBlankDescriptionWhenPostTransactionsIsCalledThenItResponds400IndicatingDescriptionAndSavesNothing(
+            final ResultActions actual) throws Exception {
+        actual.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.description").isNotEmpty());
+        assertNothingPersisted();
+    }
+
+    private void verifyGivenNonPositiveAmountWhenPostTransactionsIsCalledThenItResponds400IndicatingAmountAndSavesNothing(
+            final ResultActions actual) throws Exception {
+        actual.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.amount").isNotEmpty());
+        assertNothingPersisted();
+    }
+
+    private void verifyGivenNullCategoryWhenPostTransactionsIsCalledThenItResponds400IndicatingCategoryAndSavesNothing(
+            final ResultActions actual) throws Exception {
+        actual.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.category").isNotEmpty());
+        assertNothingPersisted();
+    }
+
+    private void verifyGivenMultipleInvalidFieldsWhenPostTransactionsIsCalledThenItResponds400WithAllInvalidFieldsAndSavesNothing(
+            final ResultActions actual) throws Exception {
+        actual.andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.description").isNotEmpty())
+                .andExpect(jsonPath("$.amount").isNotEmpty())
+                .andExpect(jsonPath("$.category").isNotEmpty());
+        assertNothingPersisted();
+    }
+
+    private void verifyGivenEmptyAudioFileWhenPostTransactionsAiIsCalledThenItResponds400WithErrorMessage(
+            final ResultActions actual) throws Exception {
+        actual.andExpect(status().isBadRequest())
+                .andExpect(content().string("Audio file must not be empty"));
+    }
+
+    private void assertNothingPersisted() {
+        assertThat(entityRepository.count()).isZero();
     }
 }
