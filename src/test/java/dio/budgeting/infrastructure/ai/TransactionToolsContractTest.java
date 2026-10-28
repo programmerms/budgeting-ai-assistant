@@ -1,7 +1,9 @@
 package dio.budgeting.infrastructure.ai;
 
 import dio.budgeting.application.ListTransactionsByCategoryUseCase;
+import dio.budgeting.application.ListTransactionsByPeriodUseCase;
 import dio.budgeting.application.PersistTransactionUseCase;
+import dio.budgeting.application.SummarizeTransactionsByCategoryUseCase;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +37,7 @@ class TransactionToolsContractTest {
                     },
                     "category": {
                       "type": "string",
-                      "enum": ["GROCERIES", "PHARMA", "AUTO"],
+                      "enum": ["GROCERIES", "PHARMA", "AUTO", "RESTAURANT", "SHOPPING", "TRANSPORT", "HEALTH", "LEISURE", "OTHER"],
                       "description": "Categoria de uma transação"
                     },
                     "description": {
@@ -58,11 +60,54 @@ class TransactionToolsContractTest {
               "properties": {
                 "category": {
                   "type": "string",
-                  "enum": ["GROCERIES", "PHARMA", "AUTO"],
+                  "enum": ["GROCERIES", "PHARMA", "AUTO", "RESTAURANT", "SHOPPING", "TRANSPORT", "HEALTH", "LEISURE", "OTHER"],
                   "description": "Categoria de uma transação"
                 }
               },
               "required": ["category"],
+              "additionalProperties": false
+            }
+            """;
+
+    private static final String SUMMARIZE_TRANSACTIONS_BY_CATEGORY_SCHEMA = """
+            {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "object",
+              "properties": {
+                "category": {
+                  "type": "string",
+                  "enum": ["GROCERIES", "PHARMA", "AUTO", "RESTAURANT", "SHOPPING", "TRANSPORT", "HEALTH", "LEISURE", "OTHER"],
+                  "description": "Categoria de uma transação"
+                }
+              },
+              "required": ["category"],
+              "additionalProperties": false
+            }
+            """;
+
+    private static final String LIST_TRANSACTIONS_BY_PERIOD_SCHEMA = """
+            {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "object",
+              "properties": {
+                "input": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "format": "date",
+                      "description": "Data inicial no formato YYYY-MM-DD"
+                    },
+                    "to": {
+                      "type": "string",
+                      "format": "date",
+                      "description": "Data final no formato YYYY-MM-DD"
+                    }
+                  },
+                  "required": ["from", "to"]
+                }
+              },
+              "required": ["input"],
               "additionalProperties": false
             }
             """;
@@ -72,6 +117,12 @@ class TransactionToolsContractTest {
 
     @Mock
     private ListTransactionsByCategoryUseCase listTransactionsByCategoryUseCase;
+
+    @Mock
+    private SummarizeTransactionsByCategoryUseCase summarizeTransactionsByCategoryUseCase;
+
+    @Mock
+    private ListTransactionsByPeriodUseCase listTransactionsByPeriodUseCase;
 
     @InjectMocks
     private TransactionTools transactionTools;
@@ -92,6 +143,22 @@ class TransactionToolsContractTest {
         verifyGivenRegisteredToolsWhenReadingTheListByCategoryDefinitionThenNameDescriptionAndSchemaAreUnchanged(actual);
     }
 
+    @Test
+    @DisplayName("Given the registered tools When reading the summarize by category definition Then name, description and schema match")
+    void givenRegisteredToolsWhenReadingTheSummarizeByCategoryDefinitionThenNameDescriptionAndSchemaMatch() throws Exception {
+        final var actual = findToolDefinition("summarize-transactions-by-category");
+
+        verifyGivenRegisteredToolsWhenReadingTheSummarizeByCategoryDefinitionThenNameDescriptionAndSchemaMatch(actual);
+    }
+
+    @Test
+    @DisplayName("Given the registered tools When reading the list by period definition Then name, description and schema match")
+    void givenRegisteredToolsWhenReadingTheListByPeriodDefinitionThenNameDescriptionAndSchemaMatch() throws Exception {
+        final var actual = findToolDefinition("list-transactions-by-period");
+
+        verifyGivenRegisteredToolsWhenReadingTheListByPeriodDefinitionThenNameDescriptionAndSchemaMatch(actual);
+    }
+
     private void verifyGivenRegisteredToolsWhenReadingThePersistTransactionDefinitionThenNameDescriptionAndSchemaAreUnchanged(
             final ToolDefinition actual) throws Exception {
         assertThat(actual.description()).isEqualTo("Persiste uma nova transação financeira");
@@ -102,6 +169,18 @@ class TransactionToolsContractTest {
             final ToolDefinition actual) throws Exception {
         assertThat(actual.description()).isEqualTo("Lista transações financeiras por categoria");
         JSONAssert.assertEquals(LIST_TRANSACTIONS_BY_CATEGORY_SCHEMA, actual.inputSchema(), JSONCompareMode.STRICT);
+    }
+
+    private void verifyGivenRegisteredToolsWhenReadingTheSummarizeByCategoryDefinitionThenNameDescriptionAndSchemaMatch(
+            final ToolDefinition actual) throws Exception {
+        assertThat(actual.description()).isEqualTo("Resume o total gasto e a quantidade de transações de uma categoria");
+        JSONAssert.assertEquals(SUMMARIZE_TRANSACTIONS_BY_CATEGORY_SCHEMA, actual.inputSchema(), JSONCompareMode.STRICT);
+    }
+
+    private void verifyGivenRegisteredToolsWhenReadingTheListByPeriodDefinitionThenNameDescriptionAndSchemaMatch(
+            final ToolDefinition actual) throws Exception {
+        assertThat(actual.description()).isEqualTo("Lista transações financeiras realizadas em um período de datas");
+        JSONAssert.assertEquals(LIST_TRANSACTIONS_BY_PERIOD_SCHEMA, actual.inputSchema(), JSONCompareMode.STRICT);
     }
 
     private ToolDefinition findToolDefinition(final String name) {
