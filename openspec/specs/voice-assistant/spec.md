@@ -25,7 +25,7 @@ A transcrição SHALL ser feita em português, orientada a frases de gastos fina
 - **THEN** o texto transcrito contém "80 reais"
 
 ### Requirement: Ferramenta de registro de transação
-A IA SHALL ter acesso a uma ferramenta que registra uma transação a partir de descrição, valor em centavos e categoria, e que devolve a transação salva. A categoria SHALL ser escolhida pela IA conforme o contexto do comando. A ferramenta aplica as mesmas regras do registro via REST, ou seja, hoje não há validação (D-03).
+A IA SHALL ter acesso a uma ferramenta que registra uma transação a partir de descrição, valor em centavos e categoria, e que devolve a transação salva. A categoria SHALL ser escolhida pela IA conforme o contexto do comando. A ferramenta SHALL aplicar as mesmas regras de validação do registro via REST (descrição preenchida, valor em centavos maior que zero e categoria obrigatória), sem salvar quando algum dado for inválido.
 
 #### Scenario: IA registra um gasto
 - **WHEN** o comando transcrito é "paguei 40 reais na farmácia"
@@ -34,6 +34,10 @@ A IA SHALL ter acesso a uma ferramenta que registra uma transação a partir de 
 #### Scenario: Chamada da ferramenta sem valor
 - **WHEN** a IA chama a ferramenta de registro sem informar o valor
 - **THEN** a chamada falha antes de salvar, o erro técnico volta para a IA e ela pode tentar chamar a ferramenta de novo
+
+#### Scenario: Chamada da ferramenta com valor menor ou igual a zero ou descrição vazia
+- **WHEN** a IA chama a ferramenta de registro com valor menor ou igual a zero ou com descrição em branco
+- **THEN** a chamada falha na validação de domínio antes de salvar, nada é persistido e o erro volta para a IA informar a pessoa usuária
 
 ### Requirement: Ferramenta de consulta por categoria
 A IA SHALL ter acesso a uma ferramenta que lista as transações de uma categoria, devolvendo descrição, categoria e valor de cada uma.
@@ -56,17 +60,6 @@ Cada comando SHALL ser processado de forma independente: o sistema não guarda o
 - **WHEN** a pessoa envia "gastei 50 reais" e, numa segunda requisição, "foi no mercado"
 - **THEN** a segunda requisição é interpretada sem conhecer a primeira
 
-### Requirement: Falhas sem tratamento (D-06)
-Falhas na transcrição, na IA ou na geração de voz, incluindo o envio de um arquivo de áudio vazio, SHALL resultar hoje em erro genérico HTTP 500, sem mensagem que explique o problema. Esse é o defeito D-06.
-
-#### Scenario: Arquivo de áudio vazio
-- **WHEN** o cliente envia `POST /transactions/ai` com um arquivo de 0 bytes no campo `file`
-- **THEN** o sistema responde HTTP 500 com a mensagem de erro padrão
-
-#### Scenario: Falha do provedor de IA
-- **WHEN** o provedor de IA está indisponível ou recusa a chave de acesso
-- **THEN** o sistema responde HTTP 500 com a mensagem de erro padrão
-
 ### Requirement: Valor em reais nas ferramentas da IA
 As ferramentas SHALL devolver à IA o valor em reais, com duas casas decimais, e não em centavos. Assim, a IA recebe o valor correto e não precisa converter nada para informá-lo.
 
@@ -80,3 +73,17 @@ O arquivo de instruções da IA SHALL ser lido explicitamente em UTF-8, independ
 #### Scenario: Ambiente que não usa UTF-8
 - **WHEN** a aplicação roda num ambiente cuja codificação padrão não é UTF-8
 - **THEN** as instruções chegam à IA com os acentos corretos, por exemplo "Você é um assistente financeiro."
+
+### Requirement: Rejeição de arquivo de áudio vazio
+O sistema SHALL rejeitar requisições a `POST /transactions/ai` cujo arquivo no campo `file` esteja vazio (`0` bytes), respondendo HTTP 400 com mensagem explicativa antes de acionar a transcrição, o chat ou a geração de voz.
+
+#### Scenario: Arquivo de áudio vazio
+- **WHEN** o cliente envia `POST /transactions/ai` com um arquivo de 0 bytes no campo `file`
+- **THEN** o sistema responde HTTP 400 com uma mensagem informando que o arquivo de áudio não pode estar vazio
+
+### Requirement: Falha do provedor de IA sem tratamento específico
+Quando o provedor de IA estiver indisponível ou recusar a chave de acesso durante `POST /transactions/ai`, o sistema SHALL responder HTTP 500 com a estrutura de erro padrão.
+
+#### Scenario: Falha do provedor de IA
+- **WHEN** o provedor de IA está indisponível ou recusa a chave de acesso
+- **THEN** o sistema responde HTTP 500 com a mensagem de erro padrão

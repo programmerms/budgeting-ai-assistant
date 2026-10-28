@@ -27,29 +27,6 @@ O sistema SHALL registrar uma transação por `POST /transactions`, recebendo JS
 - **WHEN** duas transações idênticas são registradas em sequência
 - **THEN** cada uma recebe um `id` diferente
 
-### Requirement: Ausência de validação no registro (D-03)
-O sistema hoje NÃO valida os dados de uma transação. Descrição vazia e valor zero ou negativo SHALL ser aceitos e salvos, tanto pela API REST quanto pela ferramenta de registro chamada pela IA. Esse é o defeito D-03.
-
-#### Scenario: Descrição vazia
-- **WHEN** `POST /transactions` recebe `"description": ""` com valor e categoria válidos
-- **THEN** o sistema responde HTTP 201 e a transação é salva com descrição vazia
-
-#### Scenario: Valor zero ou negativo
-- **WHEN** `POST /transactions` recebe `"amount": 0` ou `"amount": -500`
-- **THEN** o sistema responde HTTP 201 e a transação é salva com esse valor
-
-#### Scenario: Valor inválido via Tool Calling
-- **WHEN** a IA chama a ferramenta de registro com valor negativo
-- **THEN** a transação é salva sem nenhuma verificação
-
-### Requirement: Categoria ausente gera erro genérico após salvar (D-03, D-06)
-Quando a categoria vem nula, o sistema SHALL salvar a transação sem categoria e, em seguida, falhar ao montar a resposta, devolvendo um erro genérico HTTP 500 sem indicar o campo com problema.
-
-#### Scenario: Categoria nula
-- **WHEN** `POST /transactions` recebe `"category": null` com descrição e valor preenchidos
-- **THEN** o sistema responde HTTP 500 com a mensagem de erro padrão
-- **AND** a transação fica salva no banco sem categoria
-
 ### Requirement: Consulta de transações por categoria
 O sistema SHALL listar, por `GET /transactions/{category}`, todas as transações da categoria informada, com status 200. Cada item SHALL conter `id`, `category`, `description` e `amount`. Não há paginação, filtro por período nem ordenação definida.
 
@@ -97,3 +74,33 @@ O valor SHALL ser recebido em centavos, como número inteiro. Na saída, o siste
 #### Scenario: Valor na consulta
 - **WHEN** existe uma transação salva com `amount` igual a `4000` e ela é consultada
 - **THEN** a consulta mostra o valor `40.00`
+
+### Requirement: Validação dos dados da transação
+O sistema SHALL rejeitar o registro de uma transação quando a descrição estiver nula ou em branco, quando o valor em centavos for menor ou igual a zero ou quando a categoria estiver ausente. A regra SHALL valer tanto para a API REST quanto para a ferramenta de registro chamada pela IA, sem salvar nada no banco de dados.
+
+#### Scenario: Descrição vazia ou em branco
+- **WHEN** `POST /transactions` recebe `"description": ""` ou `"description": "   "` com valor e categoria válidos
+- **THEN** o sistema responde HTTP 400 indicando o campo `description`
+- **AND** nenhuma transação é salva
+
+#### Scenario: Valor zero ou negativo
+- **WHEN** `POST /transactions` recebe `"amount": 0` ou `"amount": -500` com descrição e categoria válidas
+- **THEN** o sistema responde HTTP 400 indicando o campo `amount`
+- **AND** nenhuma transação é salva
+
+#### Scenario: Categoria nula
+- **WHEN** `POST /transactions` recebe `"category": null` com descrição e valor válidos
+- **THEN** o sistema responde HTTP 400 indicando o campo `category`
+- **AND** nenhuma transação é salva
+
+#### Scenario: Dados inválidos via Tool Calling
+- **WHEN** a IA chama a ferramenta de registro com descrição em branco, valor menor ou igual a zero ou categoria nula
+- **THEN** a chamada falha antes de salvar, nenhuma transação é persistida e o erro é devolvido à IA
+
+### Requirement: Erros de validação com campos e mensagens
+Quando uma requisição a `POST /transactions` falhar na validação dos campos, o sistema SHALL responder HTTP 400 com um objeto JSON em que cada chave é o nome do campo inválido (`description`, `amount`, `category`) e o valor é a mensagem de erro correspondente.
+
+#### Scenario: Múltiplos campos inválidos
+- **WHEN** `POST /transactions` recebe `"description": ""`, `"amount": 0` e `"category": null`
+- **THEN** o sistema responde HTTP 400 com um JSON contendo as chaves `description`, `amount` e `category`, cada uma com sua mensagem de erro
+- **AND** nenhuma transação é salva
