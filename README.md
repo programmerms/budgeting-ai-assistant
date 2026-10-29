@@ -65,6 +65,10 @@ Partindo de um diagnóstico inicial do projeto base (`docs/proposta-inicial.md`)
    - **Prompt de sistema aprimorado com data atual (RF-10):** instruções explícitas para respostas curtas em português, valores em reais, conversão para centavos ao registrar, escolha entre as 9 categorias, pedido de esclarecimento quando faltar valor ou descrição e injeção dinâmica da data atual (`{currentDate}`) para consultas por período.
 9. **`document-api` (Change 7):**
    - Geração automatizada da documentação com **Spring REST Docs** e **Asciidoctor** (`src/docs/asciidoc/index.adoc`) e consolidação deste `README.md`.
+10. **`improve-registration-category-inference`:**
+   - Aprimoramento das instruções do assistente para reconhecer descrições em linguagem natural, inferir a categoria sem perguntar à pessoa usuária e usar `OTHER` quando não houver uma categoria específica segura. O assistente só pede esclarecimento quando realmente faltar a descrição ou o valor da despesa.
+11. **`restrict-assistant-to-financial-scope`:**
+   - Restrição do assistente às capacidades financeiras disponíveis: registrar despesas e consultar gastos. Perguntas sobre outros assuntos e tentativas de alterar o papel do assistente recebem uma recusa curta, enquanto descrições pessoais continuam aceitas quando fazem parte de uma operação financeira válida.
 
 ---
 
