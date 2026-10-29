@@ -21,7 +21,10 @@ import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.instancio.Select.field;
 
-@SpringBootTest(properties = "spring.ai.openai.api-key=test-key")
+@SpringBootTest(properties = {
+        "spring.ai.openai.api-key=test-key",
+        "app.admin.username=test-admin",
+        "app.admin.password=test-admin-password"})
 @Testcontainers
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class JpaTransactionRepositoryIntegrationTest {

@@ -136,11 +136,19 @@ Em `auth/domain`, três exceções herdando `RuntimeException`, mapeadas no `Glo
 
 - **Fundamento na trilha:** módulo `01-spring-web` (`TaskNotFoundException` com `@ResponseStatus(NOT_FOUND)` devolvendo `ex.getMessage()`) e módulo `02-spring-data` (`SeatAlreadyReservedException`). Mantemos o corpo em texto por consistência com o que o projeto já faz.
 
-### 12. Normalização do nome de usuário no caso de uso
+### 12. Normalização do nome de usuário no construtor do domínio
 
-`RegisterUserUseCase` aplica `toLowerCase(Locale.ROOT)` antes de verificar unicidade e persistir; `JpaUserDetailsService` aplica a mesma normalização ao buscar. A coluna é `unique = true`, o que garante a regra mesmo em concorrência.
+`UserAccount` expõe `static String normalizeUsername(String)` (`trim` seguido de `toLowerCase(Locale.ROOT)`) e aplica essa normalização no próprio construtor. Quem só precisa consultar — `RegisterUserUseCase` ao checar unicidade e `JpaUserDetailsService` ao carregar o usuário — chama o mesmo método estático. A coluna é `unique = true`, o que garante a regra mesmo em concorrência.
 
 - **Por quê:** evita que `Maria` e `maria` virem duas contas. `Locale.ROOT` em vez do locale padrão porque a conversão de maiúsculas depende de idioma (o caso clássico é o `I` sem ponto do turco), e o resultado não pode variar conforme a máquina — é a mesma preocupação que motivou ler o prompt em UTF-8 explícito no change `fix-base-defects`.
+- **Por que no construtor e não só no caso de uso:** o cadastro público não é o único caminho que cria conta. O `AdminAccountInitializer` também cria, e com `APP_ADMIN_USERNAME=Admin` a conta seria gravada como `Admin` enquanto o login buscaria `admin`, deixando o administrador sem conseguir autenticar. No construtor, nenhuma origem consegue produzir uma conta fora do padrão.
+
+### 12b. Papel e estado decididos por fábricas do domínio
+
+`UserAccount.register(username, encodedPassword)` cria sempre `ROLE_USER` e `PENDING`; `UserAccount.administrator(username, encodedPassword)` cria `ROLE_ADMIN` e `ACTIVE`. O construtor completo continua existindo para a reconstrução a partir da entidade JPA.
+
+- **Por quê:** o `AGENTS.md` exige regra de negócio no domínio, e "cadastro público nasce comum e pendente" (RF-S04) é regra de negócio. Com a fábrica, não existe caminho de código que crie um cadastro público com outro papel, e o caso de uso não precisa conhecer a regra.
+- **Fundamento na trilha:** módulo `01-spring-web`, em que a classe de domínio concentra as invariantes e o caso de uso só orquestra.
 
 ### 13. CSRF desabilitado, com o limite documentado
 

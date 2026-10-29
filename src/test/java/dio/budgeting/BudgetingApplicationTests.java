@@ -7,7 +7,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.mysql.MySQLContainer;
 
-@SpringBootTest(properties = "spring.ai.openai.api-key=test-key")
+@SpringBootTest(properties = {
+        "spring.ai.openai.api-key=test-key",
+        "app.admin.username=test-admin",
+        "app.admin.password=test-admin-password"})
 @Testcontainers
 class BudgetingApplicationTests {
 

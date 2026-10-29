@@ -20,6 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.restdocs.RestDocumentationContextProvider;
 import org.springframework.restdocs.RestDocumentationExtension;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.TestConstructor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -47,6 +48,7 @@ import static org.springframework.restdocs.payload.PayloadDocumentation.response
 import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -55,9 +57,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(RestDocumentationExtension.class)
-@SpringBootTest(properties = "spring.ai.openai.api-key=test-key")
+@SpringBootTest(properties = {
+        "spring.ai.openai.api-key=test-key",
+        "app.admin.username=test-admin",
+        "app.admin.password=test-admin-password"})
 @Testcontainers
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
+@WithMockUser(roles = "USER")
 class TransactionApiIntegrationTest {
 
     @Container
@@ -88,6 +94,7 @@ class TransactionApiIntegrationTest {
     @BeforeEach
     void setUp(final RestDocumentationContextProvider restDocumentation) {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
+                .apply(springSecurity())
                 .apply(documentationConfiguration(restDocumentation))
                 .build();
         entityRepository.deleteAll();

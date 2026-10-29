@@ -56,7 +56,10 @@ Regras:
 Sem `@Autowired`. Em testes de integração:
 
 ```java
-@SpringBootTest(properties = "spring.ai.openai.api-key=test-key")
+@SpringBootTest(properties = {
+        "spring.ai.openai.api-key=test-key",
+        "app.admin.username=test-admin",
+        "app.admin.password=test-admin-password"})
 @Testcontainers
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class JpaTransactionRepositoryIntegrationTest {
@@ -76,8 +79,10 @@ class JpaTransactionRepositoryIntegrationTest {
 O contêiner MySQL usa a mesma imagem do `compose.yml`, seguindo o uso de Testcontainers com `@ServiceConnection` do módulo 00 da trilha.
 
 - **Testcontainers 2 (Spring Boot 4):** a classe é `org.testcontainers.mysql.MySQLContainer`, sem o genérico `<?>`. A antiga `org.testcontainers.containers.MySQLContainer` está obsoleta.
-- **Chave fictícia:** todo `@SpringBootTest` declara `properties = "spring.ai.openai.api-key=test-key"`, para os beans da OpenAI serem criados sem `OPENAI_API_KEY`. Os testes `*IT` do curso não usam esse atributo.
+- **Propriedades obrigatórias:** todo `@SpringBootTest` declara três propriedades. `spring.ai.openai.api-key=test-key` cria os beans da OpenAI sem `OPENAI_API_KEY`; `app.admin.username=test-admin` e `app.admin.password=test-admin-password` resolvem os placeholders `${APP_ADMIN_USERNAME}` e `${APP_ADMIN_PASSWORD}` do `application.properties`. Sem elas, o contexto nem sobe.
+- **Testes `*IT` do curso:** não usam esse atributo. Como já dependem de `OPENAI_API_KEY` exportada, também exigem `APP_ADMIN_USERNAME` e `APP_ADMIN_PASSWORD` exportadas. Sem a chave da OpenAI eles são ignorados e nada disso importa.
 - **Testes de API:** além disso, recebem `@AutoConfigureMockMvc` (`org.springframework.boot.webmvc.test.autoconfigure`, do `spring-boot-starter-webmvc-test`) e o `MockMvc` pelo construtor.
+- **Segurança nos testes de API:** quando o `MockMvc` é montado à mão com `MockMvcBuilders.webAppContextSetup(...)`, é obrigatório aplicar `.apply(springSecurity())`. Sem isso o MockMvc não passa pela cadeia de filtros do Spring Security, e um teste que deveria exigir autenticação passa sem ela — falso positivo. Os cenários que precisam de uma pessoa autenticada usam `@WithMockUser(roles = "USER")`; os que verificam 401 e 403 não usam a anotação.
 - **Docker:** os testes de integração exigem Docker rodando.
 
 ## 5. Dados de teste: classes `Support` + Instancio

@@ -18,6 +18,11 @@ public final class TestConstants {
     public static final String USER_MESSAGE = "Gastei 80 reais no mercado";
     public static final String ASSISTANT_REPLY = "Transação de R$ 80,00 registrada em GROCERIES.";
     public static final byte[] AUDIO_BYTES = new byte[]{1, 2, 3, 4};
+    public static final String USERNAME = "maria";
+    public static final String RAW_PASSWORD = "senha-forte";
+    public static final String ENCODED_PASSWORD = "$2a$10$encodedPasswordPlaceholderValue........................";
+    public static final String ADMIN_USERNAME = "test-admin";
+    public static final String ADMIN_PASSWORD = "test-admin-password";
 
     private TestConstants() {
     }
