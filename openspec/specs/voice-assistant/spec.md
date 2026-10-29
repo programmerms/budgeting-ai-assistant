@@ -47,7 +47,7 @@ A IA SHALL ter acesso a uma ferramenta que lista as transações de uma categori
 - **THEN** a IA chama a ferramenta de consulta com a categoria `AUTO` e responde com base nas transações devolvidas
 
 ### Requirement: Instruções da IA
-A IA SHALL receber instruções de sistema que a definem como assistente financeiro e orientam a responder sempre em português do Brasil, de forma curta e direta, com valores monetários expressos em reais (ex.: R$ 80,00). As instruções SHALL informar a data atual para consultas por período, orientar a escolha da categoria mais adequada entre as disponíveis e exigir pedido de esclarecimento quando faltar valor ou descrição antes de registrar um gasto.
+A IA SHALL receber instruções de sistema para responder em português do Brasil, de forma curta e direta, exibir valores em reais e usar a data atual nas consultas por período. Ao registrar, SHALL reconhecer a descrição presente no contexto, inferir a categoria sem solicitá-la, usar `OTHER` quando nenhuma categoria específica se aplicar com segurança e pedir esclarecimento somente quando faltar valor ou descrição.
 
 #### Scenario: Categoria escolhida pela IA
 - **WHEN** o comando é "abasteci o carro com 200 reais"
@@ -60,6 +60,15 @@ A IA SHALL receber instruções de sistema que a definem como assistente finance
 #### Scenario: Pedido de esclarecimento quando faltar valor ou descrição
 - **WHEN** o comando para registrar um gasto omite o valor ou a descrição (como "gastei no mercado" sem informar quanto)
 - **THEN** as instruções orientam a IA a pedir esclarecimento em português em vez de inventar dados para chamar a ferramenta de registro
+
+
+#### Scenario: Descrição e valor reconhecidos em linguagem natural
+- **WHEN** o comando é "registrar por favor, contratei um serviço particular e gastei 1000 reais"
+- **THEN** a IA considera o contexto informado como descrição, converte o valor para `100000` centavos e chama a ferramenta de registro sem pedir novamente a descrição ou a categoria
+
+#### Scenario: Categoria de fallback para contexto ambíguo
+- **WHEN** um comando de registro contém descrição e valor, mas o contexto não corresponde com segurança a uma categoria específica
+- **THEN** a IA usa a categoria `OTHER` sem pedir que a pessoa usuária escolha uma categoria
 
 ### Requirement: Comandos independentes
 Cada comando SHALL ser processado de forma independente: o sistema não guarda o histórico da conversa entre requisições.

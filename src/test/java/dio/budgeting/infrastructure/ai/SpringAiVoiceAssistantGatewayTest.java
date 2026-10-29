@@ -128,7 +128,13 @@ class SpringAiVoiceAssistantGatewayTest {
                 .doesNotContain("{currentDate}")
                 .contains("português do Brasil")
                 .contains("reais")
-                .contains("esclarecimento");
+                .contains("esclarecimento")
+                .contains("descrição pode ser uma frase em linguagem natural")
+                .contains("nunca peça que a pessoa usuária informe ou confirme a categoria")
+                .contains("use a categoria OTHER")
+                .contains("coloquial, ambígua ou sensível")
+                .contains("contratei um serviço particular e gastei 1000 reais")
+                .contains("description=\"serviço particular\", amount=100000, category=OTHER");
         assertThat(actual).isEqualTo(ASSISTANT_REPLY);
     }
 
