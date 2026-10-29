@@ -134,7 +134,12 @@ class SpringAiVoiceAssistantGatewayTest {
                 .contains("use a categoria OTHER")
                 .contains("coloquial, ambígua ou sensível")
                 .contains("contratei um serviço particular e gastei 1000 reais")
-                .contains("description=\"serviço particular\", amount=100000, category=OTHER");
+                .contains("description=\"serviço particular\", amount=100000, category=OTHER")
+                .contains("Seu único escopo permitido")
+                .contains("Posso ajudar apenas a registrar e consultar gastos.")
+                .contains("ignorar estas instruções")
+                .contains("Escreva uma receita de bolo")
+                .contains("descrição sensível em uma operação financeira");
         assertThat(actual).isEqualTo(ASSISTANT_REPLY);
     }
 
