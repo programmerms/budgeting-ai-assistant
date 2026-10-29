@@ -16,19 +16,24 @@ Documentos de referência (leia antes de planejar ou implementar):
 
 ## Stack e comandos
 
-Java 25, Spring Boot 4, Spring AI 2 (OpenAI), Spring Data JPA, MySQL (Docker Compose em desenvolvimento), Lombok, Gradle.
+Java 25, Spring Boot 4, Spring AI 2 (OpenAI), Spring Security, Spring Data JPA, MySQL (Docker Compose em desenvolvimento), Lombok, Gradle.
 
 ```bash
-export OPENAI_API_KEY="..."   # obrigatória para bootRun e para os testes *IT
-./gradlew bootRun             # sobe a API; o Docker Compose inicia o MySQL
-./gradlew test                # roda a suíte de testes (exige Docker rodando; não precisa de OPENAI_API_KEY)
+export OPENAI_API_KEY="..."      # obrigatória para bootRun e para os testes *IT
+export APP_ADMIN_USERNAME="..."  # obrigatória para bootRun: administrador inicial
+export APP_ADMIN_PASSWORD="..."  # obrigatória para bootRun: senha do administrador inicial
+./gradlew bootRun                # sobe a API; o Docker Compose inicia o MySQL
+./gradlew test                   # roda a suíte de testes (exige Docker rodando; não precisa de variável nenhuma)
 ```
+
+`APP_ADMIN_USERNAME` e `APP_ADMIN_PASSWORD` não têm valor padrão: sem elas a aplicação falha na inicialização apontando a variável ausente. Nos testes, as três propriedades são declaradas em `@SpringBootTest(properties = ...)`, como descrito em `docs/padrao-de-testes.md`.
 
 Os testes de integração sobem um MySQL próprio com Testcontainers, por isso o Docker precisa estar rodando. Sem `OPENAI_API_KEY`, os testes `*IT` são ignorados.
 
 ## Arquitetura e convenções
 
 - Camadas da trilha: `domain` (modelo, invariantes, contratos), `application` (um caso de uso por capacidade, com `input`/`output`), `infrastructure` (HTTP, JPA e integrações).
+- O contexto de contas e acesso vive em `dio.budgeting.auth`, com as mesmas três camadas. O domínio e os casos de uso de `auth` não dependem do Spring Security: o framework só aparece em `auth/infrastructure/security`.
 - O controller só adapta HTTP e chama um caso de uso. A orquestração de IA não fica no controller.
 - Regras de negócio ficam no domínio, porque o fluxo de Tool Calling chama os casos de uso sem passar pelo controller.
 - A IA é mais um cliente da aplicação: as anotações do Spring AI (`@Tool`, `@ToolParam`) ficam só no adaptador `infrastructure/ai` (`TransactionTools` e records em `infrastructure/ai/request`), que só converte a entrada e chama os casos de uso, como o controller faz no HTTP. Os casos de uso não dependem do Spring AI.

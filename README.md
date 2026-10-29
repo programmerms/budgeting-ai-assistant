@@ -31,6 +31,7 @@ Todas as escolhas seguem os módulos ministrados na trilha **DIO Spring Boot Lea
 | **Spring AI 2.0.0-M4 (OpenAI)** | `ChatClient`, Tool Calling (`@Tool`, `@ToolParam`), `TranscriptionModel` (`whisper-1`) e `TextToSpeechModel` (`gpt-4o-mini-tts`) | Módulo `05-spring-ai` |
 | **Spring Data JPA + Hibernate** | Persistência relacional, *derived queries* e `@CreationTimestamp` | Módulos `00-domain-driven-design` e `02-spring-data` |
 | **MySQL 9.6** (Docker Compose) | Banco de dados relacional | Módulo `05-spring-ai` |
+| **Spring Security** | Autenticação por sessão HTTP (`SecurityFilterChain`, filtro REST de login, `UserDetailsService` próprio) e autorização por papel, com senhas em BCrypt | Módulo `03-spring-security` |
 | **Bean Validation (`jakarta.validation`)** | Validação de entrada HTTP (`@Valid`, `@NotBlank`, `@NotNull`, `@Positive`) e `@RestControllerAdvice` | Módulo `01-spring-web` |
 | **Testcontainers 2 (`@ServiceConnection`)** | Banco MySQL 9.6 real e efêmero nos testes de integração | Módulo `00-domain-driven-design` |
 | **Spring REST Docs + Asciidoctor** | Documentação da API gerada a partir dos testes de integração | Módulo `01-spring-web` |
@@ -69,6 +70,9 @@ Partindo de um diagnóstico inicial do projeto base (`docs/proposta-inicial.md`)
    - Aprimoramento das instruções do assistente para reconhecer descrições em linguagem natural, inferir a categoria sem perguntar à pessoa usuária e usar `OTHER` quando não houver uma categoria específica segura. O assistente só pede esclarecimento quando realmente faltar a descrição ou o valor da despesa.
 11. **`restrict-assistant-to-financial-scope`:**
    - Restrição do assistente às capacidades financeiras disponíveis: registrar despesas e consultar gastos. Perguntas sobre outros assuntos e tentativas de alterar o papel do assistente recebem uma recusa curta, enquanto descrições pessoais continuam aceitas quando fazem parte de uma operação financeira válida.
+12. **`add-user-accounts-and-authentication`:**
+   - **Contas, papéis e aprovação:** cadastro público com estado `PENDING`, aprovação ou recusa por um administrador e papéis `ROLE_USER` e `ROLE_ADMIN` definidos sempre pelo sistema, nunca pelos dados do cliente.
+   - **Autenticação por sessão:** login e logout REST com cookie `JSESSIONID`, senhas em BCrypt, administrador inicial vindo de variáveis de ambiente e endpoints financeiros passando a exigir sessão autenticada.
 
 ---
 
@@ -78,10 +82,17 @@ Partindo de um diagnóstico inicial do projeto base (`docs/proposta-inicial.md`)
 src/main/java/dio/budgeting
 ├── domain                  # Entidade Transaction, TransactionId, Category e contrato TransactionRepository
 ├── application             # Casos de uso, gateway VoiceAssistantGateway e records de input/output
-└── infrastructure
-    ├── ai                  # Adaptador TransactionTools (@Tool/@ToolParam) e SpringAiVoiceAssistantGateway
-    ├── http                # TransactionController, GlobalExceptionHandler e records de request/response
-    └── persistence         # TransactionEntity (@CreationTimestamp), TransactionEntityRepository e JpaTransactionRepository
+├── infrastructure
+│   ├── ai                  # Adaptador TransactionTools (@Tool/@ToolParam) e SpringAiVoiceAssistantGateway
+│   ├── http                # TransactionController, GlobalExceptionHandler e records de request/response
+│   └── persistence         # TransactionEntity (@CreationTimestamp), TransactionEntityRepository e JpaTransactionRepository
+└── auth                    # Contexto de contas e acesso, com as mesmas três camadas
+    ├── domain              # UserAccount, UserAccountId, UserRole, UserStatus e contrato UserAccountRepository
+    ├── application         # RegisterUserUseCase, ApproveUserUseCase, RejectUserUseCase, ListUsersByStatusUseCase e PasswordEncoderGateway
+    └── infrastructure
+        ├── http            # AuthController, AdminUserController e records de request/response
+        ├── persistence     # UserAccountEntity, UserAccountEntityRepository e JpaUserAccountRepository
+        └── security        # SecurityConfig, JpaUserDetailsService, AuthenticatedUser e AdminAccountInitializer
 ```
 
 ### Convenção de valores monetários (RF-01)
@@ -93,6 +104,21 @@ src/main/java/dio/budgeting
 
 `GROCERIES`, `PHARMA`, `AUTO`, `RESTAURANT`, `SHOPPING`, `TRANSPORT`, `HEALTH`, `LEISURE`, `OTHER`.
 
+### Controle de acesso
+
+A API é multiusuário: todos os endpoints de `/transactions` exigem uma sessão autenticada com o papel `ROLE_USER`, e os endpoints de `/api/admin` exigem `ROLE_ADMIN`. Apenas o cadastro (`POST /api/auth/register`) e o login (`POST /api/auth/login`) são públicos.
+
+O ciclo de vida de uma conta é **cadastro → aprovação → login**: o cadastro nasce no estado `PENDING` e não autentica; um administrador aprova (`ACTIVE`) ou recusa (`REJECTED`); só uma conta `ACTIVE` consegue entrar. O papel e o estado são sempre definidos pelo sistema, nunca pelos dados enviados pelo cliente.
+
+A autenticação é por **sessão HTTP** com cookie `JSESSIONID`, seguindo o módulo `03-spring-security` da trilha. As senhas são gravadas apenas codificadas com BCrypt.
+
+#### Limites conhecidos
+
+Esta configuração é **educacional** e não está pronta para uso em navegador em produção:
+
+- **CSRF desabilitado.** Como no módulo `03-spring-security` da trilha, a proteção contra *Cross-Site Request Forgery* está desligada para simplificar o consumo por `curl` e por clientes de API. Em um front-end de navegador com sessão por cookie, isso precisaria ser reativado.
+- **Enumeração de usuários por tempo de resposta.** Toda falha de login devolve o mesmo `401` genérico, mas uma conta inexistente ou ainda `PENDING` falha antes de o BCrypt rodar, respondendo mais rápido que uma senha errada em conta ativa. Eliminar essa diferença exigiria comparação em tempo constante, que está fora do conteúdo da trilha.
+
 ---
 
 ## 5. Como executar a aplicação
@@ -103,10 +129,24 @@ src/main/java/dio/budgeting
 - **Docker** e **Docker Compose** em execução
 - Chave da API da OpenAI (`OPENAI_API_KEY`)
 
+### Variáveis de ambiente obrigatórias
+
+| Variável | Papel |
+|---|---|
+| `OPENAI_API_KEY` | Chave da API da OpenAI usada pelo assistente |
+| `APP_ADMIN_USERNAME` | Nome de usuário do administrador inicial |
+| `APP_ADMIN_PASSWORD` | Senha em texto puro do administrador inicial, codificada com BCrypt antes de ser gravada |
+
+Nenhuma credencial é versionada: as três variáveis são lidas do ambiente e a aplicação **não sobe** se alguma faltar, falhando na inicialização com o nome da variável ausente.
+
+Na primeira inicialização, a aplicação cria o administrador com essas credenciais. Se já existir uma conta com o papel `ROLE_ADMIN`, nada é criado e as variáveis são ignoradas: trocar a senha depois exige alterar a conta no banco, não a variável.
+
 ### Subindo a aplicação
 
 ```bash
 export OPENAI_API_KEY="sua_chave_openai_aqui"
+export APP_ADMIN_USERNAME="admin"
+export APP_ADMIN_PASSWORD="uma_senha_forte_aqui"
 ./gradlew bootRun
 ```
 
@@ -134,12 +174,73 @@ Para rodar também os testes de integração ao vivo com a OpenAI (`*IT` herdado
 OPENAI_API_KEY="sua_chave_openai_aqui" ./gradlew test
 ```
 
-### 6.2 Exemplos de requisição (`curl`)
+### 6.2 Autenticação (`curl`)
+
+Os exemplos usam `-c cookies.txt` para **gravar** o cookie de sessão e `-b cookies.txt` para **reenviá-lo** nas requisições seguintes.
+
+#### 1. Cadastrar um usuário (`POST /api/auth/register`)
+
+```bash
+curl -i -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "maria", "password": "senha-forte"}'
+```
+
+Resposta (`201 Created`) — a conta nasce pendente e ainda **não** consegue entrar:
+
+```json
+{
+  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "username": "maria",
+  "status": "PENDING"
+}
+```
+
+#### 2. Entrar como administrador (`POST /api/auth/login`)
+
+```bash
+curl -i -c admin-cookies.txt -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "uma_senha_forte_aqui"}'
+```
+
+#### 3. Listar e aprovar cadastros pendentes (`/api/admin/users`)
+
+```bash
+# Lista as contas pendentes
+curl -s -b admin-cookies.txt "http://localhost:8080/api/admin/users?status=PENDING"
+
+# Aprova um cadastro (use o id devolvido no cadastro ou na listagem)
+curl -i -b admin-cookies.txt -X POST \
+  http://localhost:8080/api/admin/users/7c9e6679-7425-40de-944b-e07fc1f90ae7/approve
+
+# Para recusar, troque /approve por /reject
+```
+
+#### 4. Entrar como o usuário aprovado (`POST /api/auth/login`)
+
+```bash
+curl -i -c cookies.txt -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "maria", "password": "senha-forte"}'
+```
+
+#### 5. Sair (`POST /api/auth/logout`)
+
+```bash
+curl -i -b cookies.txt -X POST http://localhost:8080/api/auth/logout
+```
+
+Responde `204 No Content` e invalida a sessão: reutilizar o mesmo cookie em um endpoint protegido passa a devolver `401`.
+
+### 6.3 Exemplos de requisição (`curl`)
+
+Todos os endpoints abaixo exigem a sessão obtida no passo 4 acima; sem o cookie, a resposta é `401`.
 
 #### 1. Registrar uma transação via REST (`POST /transactions`)
 
 ```bash
-curl -i -X POST http://localhost:8080/transactions \
+curl -i -b cookies.txt -X POST http://localhost:8080/transactions \
   -H "Content-Type: application/json" \
   -d '{
     "description": "Compras no mercado",
@@ -163,13 +264,13 @@ Resposta (`201 Created`):
 #### 2. Listar transações por categoria (`GET /transactions/{category}`)
 
 ```bash
-curl -s http://localhost:8080/transactions/GROCERIES
+curl -s -b cookies.txt http://localhost:8080/transactions/GROCERIES
 ```
 
 #### 3. Consultar resumo (total e quantidade) por categoria (`GET /transactions/summary`)
 
 ```bash
-curl -s "http://localhost:8080/transactions/summary?category=GROCERIES"
+curl -s -b cookies.txt "http://localhost:8080/transactions/summary?category=GROCERIES"
 ```
 
 Resposta (`200 OK`):
@@ -185,7 +286,7 @@ Resposta (`200 OK`):
 #### 4. Consultar transações por período (`GET /transactions?from=...&to=...`)
 
 ```bash
-curl -s "http://localhost:8080/transactions?from=2026-10-01&to=2026-10-31"
+curl -s -b cookies.txt "http://localhost:8080/transactions?from=2026-10-01&to=2026-10-31"
 ```
 
 #### 5. Enviar comando em texto para a IA (`POST /transactions/ai/text`)
@@ -194,17 +295,17 @@ Permite testar todo o fluxo de interpretação e Tool Calling sem precisar de á
 
 ```bash
 # Registrar um gasto falando em linguagem natural
-curl -s -X POST http://localhost:8080/transactions/ai/text \
+curl -s -b cookies.txt -X POST http://localhost:8080/transactions/ai/text \
   -H "Content-Type: application/json" \
   -d '{"message": "Almocei em um restaurante e gastei 45 reais"}'
 
 # Consultar o total gasto em uma categoria
-curl -s -X POST http://localhost:8080/transactions/ai/text \
+curl -s -b cookies.txt -X POST http://localhost:8080/transactions/ai/text \
   -H "Content-Type: application/json" \
   -d '{"message": "Quanto eu já gastei com mercado?"}'
 
 # Consultar gastos do período usando referência relativa de data
-curl -s -X POST http://localhost:8080/transactions/ai/text \
+curl -s -b cookies.txt -X POST http://localhost:8080/transactions/ai/text \
   -H "Content-Type: application/json" \
   -d '{"message": "Quais foram meus gastos deste mês?"}'
 ```
@@ -212,7 +313,7 @@ curl -s -X POST http://localhost:8080/transactions/ai/text \
 #### 6. Enviar comando de voz para a IA (`POST /transactions/ai`)
 
 ```bash
-curl -X POST http://localhost:8080/transactions/ai \
+curl -b cookies.txt -X POST http://localhost:8080/transactions/ai \
   -F "file=@src/test/resources/audio/recording-1.m4a" \
   --output resposta.mp3
 ```

@@ -16,6 +16,128 @@ Esta API permite registrar e consultar transações financeiras (gastos) tanto p
 
 ---
 
+== Autenticação
+
+Todos os endpoints de `/transactions` exigem uma sessão autenticada com o papel `ROLE_USER`. Os endpoints de `/api/admin` exigem o papel `ROLE_ADMIN`. Apenas o cadastro e o login são públicos.
+
+O fluxo é: o visitante se cadastra, o cadastro nasce no estado `PENDING`, um administrador aprova, e só então o login funciona. A sessão é mantida por cookie `JSESSIONID`; nos exemplos com `curl`, use `-c cookies.txt` para gravar o cookie e `-b cookies.txt` para reenviá-lo.
+
+=== Cadastrar Usuário
+
+Cria um cadastro público (`POST /api/auth/register`). O papel e o estado são definidos pelo sistema: o cliente não consegue se autodeclarar administrador nem se autoaprovar.
+
+==== Requisição
+
+include::{snippets}/register-user/curl-request.adoc[]
+
+==== Campos da Requisição
+
+include::{snippets}/register-user/request-fields.adoc[]
+
+==== Resposta
+
+include::{snippets}/register-user/http-response.adoc[]
+
+==== Campos da Resposta
+
+include::{snippets}/register-user/response-fields.adoc[]
+
+=== Entrar
+
+Autentica um usuário ativo e abre a sessão (`POST /api/auth/login`). Qualquer falha — usuário inexistente, senha errada ou cadastro ainda não aprovado — devolve o mesmo `401` genérico, para não revelar quais nomes de usuário existem.
+
+==== Requisição
+
+include::{snippets}/login/curl-request.adoc[]
+
+==== Campos da Requisição
+
+include::{snippets}/login/request-fields.adoc[]
+
+==== Resposta
+
+include::{snippets}/login/http-response.adoc[]
+
+=== Sair
+
+Encerra a sessão e invalida o cookie (`POST /api/auth/logout`).
+
+==== Requisição
+
+include::{snippets}/logout/curl-request.adoc[]
+
+==== Resposta
+
+include::{snippets}/logout/http-response.adoc[]
+
+---
+
+== Administração de Cadastros
+
+Endpoints restritos ao papel `ROLE_ADMIN`. Um usuário comum autenticado recebe `403`; uma requisição sem sessão recebe `401`.
+
+=== Listar Cadastros por Estado
+
+Lista as contas em um estado (`GET /api/admin/users?status=PENDING`). O parâmetro `status` é obrigatório.
+
+==== Requisição
+
+include::{snippets}/list-pending-users/curl-request.adoc[]
+
+==== Parâmetros de Consulta
+
+include::{snippets}/list-pending-users/query-parameters.adoc[]
+
+==== Resposta
+
+include::{snippets}/list-pending-users/http-response.adoc[]
+
+==== Campos da Resposta
+
+include::{snippets}/list-pending-users/response-fields.adoc[]
+
+=== Aprovar Cadastro
+
+Aprova um cadastro pendente (`POST /api/admin/users/{id}/approve`). A conta passa a `ACTIVE` e o login é liberado. Se a conta já tiver sido decidida, a resposta é `409`.
+
+==== Requisição
+
+include::{snippets}/approve-user/curl-request.adoc[]
+
+==== Parâmetros de Caminho
+
+include::{snippets}/approve-user/path-parameters.adoc[]
+
+==== Resposta
+
+include::{snippets}/approve-user/http-response.adoc[]
+
+==== Campos da Resposta
+
+include::{snippets}/approve-user/response-fields.adoc[]
+
+=== Recusar Cadastro
+
+Recusa um cadastro pendente (`POST /api/admin/users/{id}/reject`). A conta passa a `REJECTED` e nunca consegue autenticar.
+
+==== Requisição
+
+include::{snippets}/reject-user/curl-request.adoc[]
+
+==== Parâmetros de Caminho
+
+include::{snippets}/reject-user/path-parameters.adoc[]
+
+==== Resposta
+
+include::{snippets}/reject-user/http-response.adoc[]
+
+==== Campos da Resposta
+
+include::{snippets}/reject-user/response-fields.adoc[]
+
+---
+
 == Registrar Transação
 
 Registra uma nova transação financeira via REST (`POST /transactions`).
@@ -138,8 +260,13 @@ Além dos endpoints REST acima, a API oferece dois canais conversacionais aciona
 |===
 | Código | Descrição
 
-| 200 OK       | Consulta ou comando executado com sucesso
-| 201 Created  | Transação criada com sucesso
+| 200 OK       | Consulta, login ou comando executado com sucesso
+| 201 Created  | Transação ou cadastro criado com sucesso
+| 204 No Content | Sessão encerrada com sucesso
 | 400 Bad Request | Erro de validação nos campos, parâmetros ou arquivo de áudio vazio
+| 401 Unauthorized | Falha de autenticação ou requisição sem sessão válida
+| 403 Forbidden | Sessão válida, mas sem o papel exigido pelo endpoint
+| 404 Not Found | Cadastro inexistente
+| 409 Conflict | Nome de usuário já em uso ou cadastro já decidido
 | 500 Internal Server Error | Falha inesperada ou indisponibilidade do provedor externo de IA
 |===
