@@ -56,6 +56,17 @@ Como todo o estado do planejamento vive em arquivo, e não na conversa, qualquer
 
 Siga a ordem dos changes da seção 5 da proposta inicial (`baseline-specs` primeiro). Antes de começar, rode `openspec list` para ver o que está em andamento.
 
+### Sessão e modelo por fase
+
+O planejamento exige mais julgamento que a implementação, e a implementação consome mais tokens que o planejamento. Por isso as duas fases não precisam rodar no mesmo modelo nem na mesma conversa.
+
+- **Propose:** modelo mais capaz. É aqui que as decisões difíceis e as alternativas descartadas são definidas.
+- **Apply:** sessão nova com um modelo intermediário. A sessão nova economiza mais que a troca de modelo, porque o histórico inteiro é reenviado a cada turno e o implementador não precisa do transcript do planejamento.
+- **Lembre o autor na fronteira.** Ao terminar um propose, ofereça o prompt pronto para abrir a sessão de apply. Ao terminar um apply, avise que o archive pode seguir na mesma sessão, por ser curto.
+- Quanto mais preciso o `tasks.md` — arquivo, assinatura, teste e comando de verificação em cada tarefa —, menos julgamento o apply exige. É isso que torna o modelo mais simples viável; invista no plano em vez de economizar depois.
+
+Esta divisão está em avaliação: o primeiro experimento é o apply de `add-transaction-ownership`. Se o resultado não se sustentar, revise esta seção com o que foi observado.
+
 ## Modo de trabalho
 
 O autor está aprendendo e precisa conseguir explicar cada decisão numa entrevista. É esse o objetivo que o modo de trabalho serve.
