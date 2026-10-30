@@ -1,0 +1,389 @@
+type: collection.insomnia.rest/5.0
+schema_version: "5.1"
+name: Budgeting AI Assistant
+meta:
+  id: wrk_2d4a6c8e0f1b3d5a7c9e1f2b4d6a8c0e
+  created: 1793386680000
+  modified: 1793386680000
+  description: >-
+    Collection da API de orçamento. O Insomnia armazena automaticamente o
+    JSESSIONID. Faça o login de administrador antes das rotas administrativas e
+    o login de usuário antes das rotas financeiras.
+collection:
+  - name: 1. Autenticação
+    meta:
+      id: fld_1a2b3c4d5e6f708192a3b4c5d6e7f809
+      created: 1793386680000
+      modified: 1793386680000
+      sortKey: -4000
+      description: Cadastro, login e logout.
+    children:
+      - url: "{{ _.base_url }}/api/auth/register"
+        name: Cadastrar usuário
+        meta:
+          id: req_01a2b3c4d5e6f708192a3b4c5d6e7f80
+          created: 1793386680000
+          modified: 1793386680000
+          isPrivate: false
+          description: Após executar, copie o campo id da resposta para user_id no ambiente.
+          sortKey: -4000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "username": "{{ _.user_username }}",
+              "password": "{{ _.user_password }}"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/auth/login"
+        name: Login — Administrador
+        meta:
+          id: req_02a2b3c4d5e6f708192a3b4c5d6e7f80
+          created: 1793386680000
+          modified: 1793386680000
+          isPrivate: false
+          description: Grava no cookie jar a sessão usada pelas rotas administrativas.
+          sortKey: -3000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "username": "{{ _.admin_username }}",
+              "password": "{{ _.admin_password }}"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/auth/login"
+        name: Login — Usuário
+        meta:
+          id: req_03a2b3c4d5e6f708192a3b4c5d6e7f80
+          created: 1793386680000
+          modified: 1793386680000
+          isPrivate: false
+          description: Substitui a sessão atual pela sessão da pessoa usuária.
+          sortKey: -2000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "username": "{{ _.user_username }}",
+              "password": "{{ _.user_password }}"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/auth/logout"
+        name: Logout
+        meta:
+          id: req_04a2b3c4d5e6f708192a3b4c5d6e7f80
+          created: 1793386680000
+          modified: 1793386680000
+          isPrivate: false
+          description: Encerra a sessão atual e remove o JSESSIONID.
+          sortKey: -1000
+        method: POST
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 2. Administração
+    meta:
+      id: fld_2a2b3c4d5e6f708192a3b4c5d6e7f809
+      created: 1793386680000
+      modified: 1793386680000
+      sortKey: -3000
+      description: Faça Login — Administrador antes destas requisições.
+    children:
+      - url: "{{ _.base_url }}/api/admin/users"
+        name: Listar usuários por status
+        meta:
+          id: req_05a2b3c4d5e6f708192a3b4c5d6e7f80
+          created: 1793386680000
+          modified: 1793386680000
+          isPrivate: false
+          description: "Status aceitos: PENDING, ACTIVE e REJECTED."
+          sortKey: -3000
+        method: GET
+        parameters:
+          - name: status
+            value: "{{ _.user_status }}"
+            description: PENDING, ACTIVE ou REJECTED
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/admin/users/{{ _.user_id }}/approve"
+        name: Aprovar usuário
+        meta:
+          id: req_06a2b3c4d5e6f708192a3b4c5d6e7f80
+          created: 1793386680000
+          modified: 1793386680000
+          isPrivate: false
+          description: Use em user_id o UUID devolvido pelo cadastro ou pela listagem.
+          sortKey: -2000
+        method: POST
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/api/admin/users/{{ _.user_id }}/reject"
+        name: Recusar usuário
+        meta:
+          id: req_07a2b3c4d5e6f708192a3b4c5d6e7f80
+          created: 1793386680000
+          modified: 1793386680000
+          isPrivate: false
+          description: Use em user_id o UUID devolvido pelo cadastro ou pela listagem.
+          sortKey: -1000
+        method: POST
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 3. Transações
+    meta:
+      id: fld_3a2b3c4d5e6f708192a3b4c5d6e7f809
+      created: 1793386680000
+      modified: 1793386680000
+      sortKey: -2000
+      description: Faça Login — Usuário antes destas requisições.
+    children:
+      - url: "{{ _.base_url }}/transactions"
+        name: Registrar transação
+        meta:
+          id: req_08a2b3c4d5e6f708192a3b4c5d6e7f80
+          created: 1793386680000
+          modified: 1793386680000
+          isPrivate: false
+          description: amount é informado em centavos; o proprietário vem da sessão.
+          sortKey: -4000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "description": "{{ _.description }}",
+              "amount": {{ _.amount }},
+              "category": "{{ _.category }}"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/transactions/{{ _.category }}"
+        name: Listar transações por categoria
+        meta:
+          id: req_09a2b3c4d5e6f708192a3b4c5d6e7f80
+          created: 1793386680000
+          modified: 1793386680000
+          isPrivate: false
+          description: Retorna somente as transações da pessoa autenticada.
+          sortKey: -3000
+        method: GET
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/transactions/summary"
+        name: Resumo por categoria
+        meta:
+          id: req_10a2b3c4d5e6f708192a3b4c5d6e7f80
+          created: 1793386680000
+          modified: 1793386680000
+          isPrivate: false
+          description: Retorna total em reais e quantidade para a pessoa autenticada.
+          sortKey: -2000
+        method: GET
+        parameters:
+          - name: category
+            value: "{{ _.category }}"
+            description: Categoria financeira
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/transactions"
+        name: Listar transações por período
+        meta:
+          id: req_11a2b3c4d5e6f708192a3b4c5d6e7f80
+          created: 1793386680000
+          modified: 1793386680000
+          isPrivate: false
+          description: Datas no formato YYYY-MM-DD, com intervalo inclusivo em UTC.
+          sortKey: -1000
+        method: GET
+        parameters:
+          - name: from
+            value: "{{ _.from }}"
+            description: Data inicial
+            disabled: false
+          - name: to
+            value: "{{ _.to }}"
+            description: Data final
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+  - name: 4. Comandos de IA
+    meta:
+      id: fld_4a2b3c4d5e6f708192a3b4c5d6e7f809
+      created: 1793386680000
+      modified: 1793386680000
+      sortKey: -1000
+      description: Comandos por texto e voz usando a sessão da pessoa atual.
+    children:
+      - url: "{{ _.base_url }}/transactions/ai/text"
+        name: Comando em texto
+        meta:
+          id: req_12a2b3c4d5e6f708192a3b4c5d6e7f80
+          created: 1793386680000
+          modified: 1793386680000
+          isPrivate: false
+          description: A IA usa as ferramentas financeiras com o proprietário da sessão.
+          sortKey: -2000
+        method: POST
+        body:
+          mimeType: application/json
+          text: |-
+            {
+              "message": "{{ _.message }}"
+            }
+        headers:
+          - name: Content-Type
+            value: application/json
+            disabled: false
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+      - url: "{{ _.base_url }}/transactions/ai"
+        name: Comando por voz
+        meta:
+          id: req_13a2b3c4d5e6f708192a3b4c5d6e7f80
+          created: 1793386680000
+          modified: 1793386680000
+          isPrivate: false
+          description: Selecione um arquivo de áudio; a resposta é um MP3.
+          sortKey: -1000
+        method: POST
+        body:
+          mimeType: multipart/form-data
+          params:
+            - name: file
+              value: ""
+              description: Arquivo de áudio do comando
+              disabled: false
+              type: file
+              fileName: "{{ _.audio_file }}"
+        settings:
+          renderRequestBody: true
+          encodeUrl: true
+          followRedirects: global
+          cookies:
+            send: true
+            store: true
+          rebuildPath: true
+cookieJar:
+  name: Default Jar
+  meta:
+    id: jar_5a2b3c4d5e6f708192a3b4c5d6e7f809
+    created: 1793386680000
+    modified: 1793386680000
+environments:
+  name: Base Environment
+  meta:
+    id: env_6a2b3c4d5e6f708192a3b4c5d6e7f809
+    created: 1793386680000
+    modified: 1793386680000
+    isPrivate: false
+  data:
+    base_url: http://localhost:8080
+    admin_username: admin
+    admin_password: ""
+    user_username: maria
+    user_password: ""
+    user_id: cole-aqui-o-id-devolvido-pelo-cadastro
+    user_status: PENDING
+    description: Compras no mercado
+    amount: 8000
+    category: GROCERIES
+    from: 2026-10-01
+    to: 2026-10-31
+    message: Quanto eu já gastei com mercado?
+    audio_file: /caminho/absoluto/para/comando.m4a

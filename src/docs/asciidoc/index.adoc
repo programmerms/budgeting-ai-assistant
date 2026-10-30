@@ -22,6 +22,12 @@ Todos os endpoints de `/transactions` exigem uma sessão autenticada com o papel
 
 O fluxo é: o visitante se cadastra, o cadastro nasce no estado `PENDING`, um administrador aprova, e só então o login funciona. A sessão é mantida por cookie `JSESSIONID`; nos exemplos com `curl`, use `-c cookies.txt` para gravar o cookie e `-b cookies.txt` para reenviá-lo.
 
+=== Isolamento dos Gastos
+
+Cada endpoint financeiro e cada ferramenta chamada pela IA opera somente sobre os gastos da pessoa autenticada. O proprietário é obtido da sessão no servidor: não é aceito no corpo, nos parâmetros nem nas ferramentas, e não aparece nas respostas. Um campo de proprietário enviado pelo cliente é ignorado.
+
+O administrador gerencia cadastros, mas não acessa os dados financeiros das pessoas usuárias.
+
 === Cadastrar Usuário
 
 Cria um cadastro público (`POST /api/auth/register`). O papel e o estado são definidos pelo sistema: o cliente não consegue se autodeclarar administrador nem se autoaprovar.
@@ -140,7 +146,7 @@ include::{snippets}/reject-user/response-fields.adoc[]
 
 == Registrar Transação
 
-Registra uma nova transação financeira via REST (`POST /transactions`).
+Registra uma nova transação financeira via REST (`POST /transactions`) para a pessoa autenticada.
 
 === Requisição
 
@@ -170,7 +176,7 @@ include::{snippets}/create-transaction/response-fields.adoc[]
 
 == Listar Transações por Categoria
 
-Lista todas as transações registradas em uma categoria específica (`GET /transactions/{category}`).
+Lista as transações da pessoa autenticada em uma categoria específica (`GET /transactions/{category}`).
 
 === Requisição
 
@@ -196,7 +202,7 @@ include::{snippets}/get-transactions-by-category/response-fields.adoc[]
 
 == Resumo de Gastos por Categoria
 
-Retorna o total gasto (em reais) e a quantidade de transações de uma categoria (`GET /transactions/summary?category=...`).
+Retorna o total gasto (em reais) e a quantidade de transações da pessoa autenticada em uma categoria (`GET /transactions/summary?category=...`).
 
 === Requisição
 
@@ -222,7 +228,7 @@ include::{snippets}/get-transactions-summary/response-fields.adoc[]
 
 == Listar Transações por Período
 
-Lista as transações criadas dentro de um intervalo inclusivo de datas em UTC (`GET /transactions?from=YYYY-MM-DD&to=YYYY-MM-DD`).
+Lista as transações da pessoa autenticada criadas dentro de um intervalo inclusivo de datas em UTC (`GET /transactions?from=YYYY-MM-DD&to=YYYY-MM-DD`).
 
 === Requisição
 
@@ -252,6 +258,8 @@ Além dos endpoints REST acima, a API oferece dois canais conversacionais aciona
 
 * `POST /transactions/ai` (`multipart/form-data`, campo `file`): recebe um arquivo de áudio, transcreve com Whisper (`whisper-1`), executa Tool Calling com `gpt-4o-mini` e devolve um arquivo `audio/mp3` (`gpt-4o-mini-tts`).
 * `POST /transactions/ai/text` (`application/json`, `{"message": "..."}`): recebe o comando em texto e devolve `{"message": "..."}` com a resposta textual da IA após acionar as ferramentas necessárias.
+
+Nos dois canais, as ferramentas recebem o proprietário exclusivamente da sessão no servidor. O modelo não recebe nem pode escolher um identificador de proprietário.
 
 ---
 

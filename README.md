@@ -73,6 +73,9 @@ Partindo de um diagnóstico inicial do projeto base (`docs/proposta-inicial.md`)
 12. **`add-user-accounts-and-authentication`:**
    - **Contas, papéis e aprovação:** cadastro público com estado `PENDING`, aprovação ou recusa por um administrador e papéis `ROLE_USER` e `ROLE_ADMIN` definidos sempre pelo sistema, nunca pelos dados do cliente.
    - **Autenticação por sessão:** login e logout REST com cookie `JSESSIONID`, senhas em BCrypt, administrador inicial vindo de variáveis de ambiente e endpoints financeiros passando a exigir sessão autenticada.
+13. **`add-transaction-ownership`:**
+   - **Propriedade obrigatória:** toda transação guarda o identificador da pessoa autenticada; o contrato do repositório não oferece consultas globais.
+   - **Isolamento em todos os canais:** REST, comandos de texto e voz registram, listam e somam apenas os gastos da sessão atual. O proprietário vem do servidor, não pode ser escolhido pelo cliente ou pelo modelo e não é exposto nas respostas.
 
 ---
 
@@ -80,11 +83,12 @@ Partindo de um diagnóstico inicial do projeto base (`docs/proposta-inicial.md`)
 
 ```text
 src/main/java/dio/budgeting
-├── domain                  # Entidade Transaction, TransactionId, Category e contrato TransactionRepository
+├── domain                  # Transaction, TransactionId, OwnerId, Category e contrato TransactionRepository
 ├── application             # Casos de uso, gateway VoiceAssistantGateway e records de input/output
 ├── infrastructure
 │   ├── ai                  # Adaptador TransactionTools (@Tool/@ToolParam) e SpringAiVoiceAssistantGateway
 │   ├── http                # TransactionController, GlobalExceptionHandler e records de request/response
+│   ├── security            # AuthenticatedOwnerProvider traduz a sessão para OwnerId
 │   └── persistence         # TransactionEntity (@CreationTimestamp), TransactionEntityRepository e JpaTransactionRepository
 └── auth                    # Contexto de contas e acesso, com as mesmas três camadas
     ├── domain              # UserAccount, UserAccountId, UserRole, UserStatus e contrato UserAccountRepository
@@ -111,6 +115,8 @@ A API é multiusuário: todos os endpoints de `/transactions` exigem uma sessão
 O ciclo de vida de uma conta é **cadastro → aprovação → login**: o cadastro nasce no estado `PENDING` e não autentica; um administrador aprova (`ACTIVE`) ou recusa (`REJECTED`); só uma conta `ACTIVE` consegue entrar. O papel e o estado são sempre definidos pelo sistema, nunca pelos dados enviados pelo cliente.
 
 A autenticação é por **sessão HTTP** com cookie `JSESSIONID`, seguindo o módulo `03-spring-security` da trilha. As senhas são gravadas apenas codificadas com BCrypt.
+
+Cada transação pertence à pessoa autenticada que a registrou. Todas as consultas e ferramentas da IA filtram por esse proprietário; o identificador não é aceito nas entradas nem devolvido nas respostas. O administrador pode aprovar e recusar cadastros, mas **não acessa dados financeiros** de nenhuma pessoa.
 
 #### Limites conhecidos
 
@@ -144,6 +150,14 @@ Na primeira inicialização, a aplicação cria o administrador com essas creden
 
 ### Subindo a aplicação
 
+Ao atualizar uma instalação criada antes do isolamento por usuário, descarte uma vez o banco de desenvolvimento antigo. As transações anteriores não têm proprietário e o comando abaixo remove o volume e seus dados de forma definitiva:
+
+```bash
+docker compose down -v
+```
+
+Depois, configure as variáveis e suba a aplicação:
+
 ```bash
 export OPENAI_API_KEY="sua_chave_openai_aqui"
 export APP_ADMIN_USERNAME="admin"
@@ -175,7 +189,23 @@ Para rodar também os testes de integração ao vivo com a OpenAI (`*IT` herdado
 OPENAI_API_KEY="sua_chave_openai_aqui" ./gradlew test
 ```
 
-### 6.2 Autenticação (`curl`)
+### 6.2 Collection do Insomnia
+
+O arquivo [`docs/insomnia/budgeting-ai-assistant-insomnia.yaml`](docs/insomnia/budgeting-ai-assistant-insomnia.yaml), no formato Insomnia v5.1, pode ser importado diretamente no Insomnia em **Import → File**. A collection contém os 13 endpoints de autenticação, administração, transações e comandos de IA, organizados em quatro pastas.
+
+Depois de importar, abra o **Base Environment** e preencha `admin_password` e `user_password`. Nenhuma senha real é armazenada no arquivo. Ajuste também `admin_username`, `user_username`, datas, categoria e demais valores quando necessário.
+
+Fluxo recomendado:
+
+1. `Cadastrar usuário`; copie o `id` da resposta para `user_id` no ambiente.
+2. `Login — Administrador`; o Insomnia grava automaticamente o `JSESSIONID`.
+3. `Aprovar usuário`.
+4. `Login — Usuário`; a sessão administrativa é substituída pela sessão da pessoa usuária.
+5. Execute as requisições das pastas `Transações` e `Comandos de IA`.
+
+Para voltar a uma rota administrativa, execute novamente `Login — Administrador`. Para o comando de voz, informe em `audio_file` o caminho absoluto de um arquivo de áudio.
+
+### 6.3 Autenticação (`curl`)
 
 Os exemplos usam `-c cookies.txt` para **gravar** o cookie de sessão e `-b cookies.txt` para **reenviá-lo** nas requisições seguintes.
 
@@ -234,9 +264,9 @@ curl -i -b cookies.txt -X POST http://localhost:8080/api/auth/logout
 
 Responde `204 No Content` e invalida a sessão: reutilizar o mesmo cookie em um endpoint protegido passa a devolver `401`.
 
-### 6.3 Exemplos de requisição (`curl`)
+### 6.4 Exemplos de requisição (`curl`)
 
-Todos os endpoints abaixo exigem a sessão obtida no passo 4 acima; sem o cookie, a resposta é `401`.
+Todos os endpoints abaixo exigem a sessão obtida no passo 4 acima; sem o cookie, a resposta é `401`. Cada pessoa registra e consulta somente os próprios gastos, inclusive nos comandos de IA. Não envie proprietário nas requisições: ele é obtido da sessão e nunca aparece nas respostas.
 
 #### 1. Registrar uma transação via REST (`POST /transactions`)
 
