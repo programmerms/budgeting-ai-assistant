@@ -58,7 +58,7 @@ Partindo de um diagnóstico inicial do projeto base (`docs/proposta-inicial.md`)
    - **Expansão de categorias (RF-05):** ampliação do enum `Category` de 3 para 9 categorias (`GROCERIES`, `PHARMA`, `AUTO`, `RESTAURANT`, `SHOPPING`, `TRANSPORT`, `HEALTH`, `LEISURE`, `OTHER`).
 6. **`add-financial-query-tools` (Change 4):**
    - **Resumo por categoria (RF-06):** caso de uso `SummarizeTransactionsByCategoryUseCase`, endpoint `GET /transactions/summary?category=...` e tool `summarize-transactions-by-category` retornando `category`, `total` em reais e `count`.
-   - **Consulta por período (RF-07):** *derived query* `findAllByCreatedAtBetween`, caso de uso `ListTransactionsByPeriodUseCase`, endpoint `GET /transactions?from=...&to=...` e tool `list-transactions-by-period`.
+   - **Consulta por período (RF-07):** *derived query* `findAllByOwnerIdAndCreatedAtBetween`, caso de uso `ListTransactionsByPeriodUseCase`, endpoint `GET /transactions?from=...&to=...` e tool `list-transactions-by-period`.
 7. **`extract-voice-command-use-case` (Change 5):**
    - **Desacoplamento da orquestração de IA (D-02, RF-08):** criação da porta `VoiceAssistantGateway` (`application`), implementada por `SpringAiVoiceAssistantGateway` (`infrastructure/ai`), e extração dos casos de uso `ExecuteVoiceCommandUseCase` e `ExecuteTextCommandUseCase`, deixando o `TransactionController` enxuto e testável em unidade (`TransactionControllerTest`).
    - **Novo endpoint de comando por texto (RF-09):** `POST /transactions/ai/text`.
@@ -132,7 +132,7 @@ Esta configuração é **educacional** e não está pronta para uso em navegador
 
 ### Pré-requisitos
 
-- **JDK 25** (ou gerenciado automaticamente via Toolchain do Gradle)
+- **JDK 25** instalado
 - **Docker** e **Docker Compose** em execução
 - Chave da API da OpenAI (`OPENAI_API_KEY`)
 
@@ -146,7 +146,7 @@ Esta configuração é **educacional** e não está pronta para uso em navegador
 
 Nenhuma credencial é versionada: as três variáveis são lidas do ambiente e a aplicação **não sobe** se alguma faltar, falhando na inicialização com o nome da variável ausente.
 
-Na primeira inicialização, a aplicação cria o administrador com essas credenciais. Se já existir uma conta com o papel `ROLE_ADMIN`, nada é criado e as variáveis são ignoradas: trocar a senha depois exige alterar a conta no banco, não a variável.
+Na primeira inicialização, a aplicação cria o administrador com essas credenciais. As variáveis continuam obrigatórias nas inicializações seguintes, mas, se já existir uma conta com o papel `ROLE_ADMIN`, o inicializador não cria nem altera a conta existente. Portanto, trocar a senha depois exige alterar a conta no banco, não a variável.
 
 ### Subindo a aplicação
 
@@ -186,12 +186,15 @@ A suíte de testes **não exige `OPENAI_API_KEY`** nem um MySQL iniciado manualm
 Para rodar também os testes de integração ao vivo com a OpenAI (`*IT` herdados do curso):
 
 ```bash
-OPENAI_API_KEY="sua_chave_openai_aqui" ./gradlew test
+OPENAI_API_KEY="sua_chave_openai_aqui" \
+APP_ADMIN_USERNAME="admin-de-teste" \
+APP_ADMIN_PASSWORD="senha-de-teste-forte" \
+./gradlew test
 ```
 
 ### 6.2 Collection do Insomnia
 
-O arquivo [`docs/insomnia/budgeting-ai-assistant-insomnia.yaml`](docs/insomnia/budgeting-ai-assistant-insomnia.yaml), no formato Insomnia v5.1, pode ser importado diretamente no Insomnia em **Import → File**. A collection contém os 13 endpoints de autenticação, administração, transações e comandos de IA, organizados em quatro pastas.
+O arquivo [`docs/insomnia/budgeting-ai-assistant-insomnia.yaml`](docs/insomnia/budgeting-ai-assistant-insomnia.yaml), no formato Insomnia v5.1, pode ser importado diretamente no Insomnia em **Import → File**. A collection contém 13 requisições de autenticação, administração, transações e comandos de IA, organizadas em quatro pastas.
 
 Depois de importar, abra o **Base Environment** e preencha `admin_password` e `user_password`. Nenhuma senha real é armazenada no arquivo. Ajuste também `admin_username`, `user_username`, datas, categoria e demais valores quando necessário.
 
