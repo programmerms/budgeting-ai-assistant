@@ -117,7 +117,8 @@ A autenticação é por **sessão HTTP** com cookie `JSESSIONID`, seguindo o mó
 Esta configuração é **educacional** e não está pronta para uso em navegador em produção:
 
 - **CSRF desabilitado.** Como no módulo `03-spring-security` da trilha, a proteção contra *Cross-Site Request Forgery* está desligada para simplificar o consumo por `curl` e por clientes de API. Em um front-end de navegador com sessão por cookie, isso precisaria ser reativado.
-- **Enumeração de usuários por tempo de resposta.** Toda falha de login devolve o mesmo `401` genérico, mas uma conta inexistente ou ainda `PENDING` falha antes de o BCrypt rodar, respondendo mais rápido que uma senha errada em conta ativa. Eliminar essa diferença exigiria comparação em tempo constante, que está fora do conteúdo da trilha.
+- **Enumeração de usuários pelo cadastro.** O `POST /api/auth/register` responde `409` quando o nome já está em uso, revelando em uma única requisição quais nomes existem. É uma troca consciente por usabilidade: sem essa resposta, a pessoa não saberia que precisa escolher outro nome. Esconder a informação exigiria um cadastro com confirmação por e-mail, fora do escopo do projeto.
+- **Resíduo de tempo no login.** Toda falha de login devolve o mesmo `401` genérico, mas uma conta `PENDING` falha antes de o BCrypt rodar e responde um pouco mais rápido que uma senha errada em conta ativa. O caso de usuário inexistente não tem esse problema: o Spring Security já roda o BCrypt contra um hash falso para igualar o tempo. Esse resíduo não é tratado porque revelaria apenas o que o `409` do cadastro acima já entrega de graça.
 
 ---
 
