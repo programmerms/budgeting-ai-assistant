@@ -47,21 +47,29 @@ Os testes de integração sobem um MySQL próprio com Testcontainers, por isso o
 Nenhuma alteração de comportamento acontece fora de um change do OpenSpec.
 
 1. **Propose** (`/opsx-propose`): gera `proposal.md`, `specs/`, `design.md` e `tasks.md`. Planejamento apenas; não edite código.
-2. **Revisão:** o autor revisa e aprova os artefatos.
-3. **Apply** (`/opsx-apply`): implementação das tarefas, no modo pareado descrito abaixo.
-4. **Archive** (`/opsx-archive`): com `./gradlew test` verde, arquiva o change e atualiza `openspec/specs/`.
+2. **Revisão:** pare e aguarde o autor revisar e aprovar os artefatos.
+3. **Apply** (`/opsx-apply`): implementação das tarefas, no modo de trabalho descrito abaixo.
+4. **Revisão:** pare de novo, com a suíte verde, e aguarde a aprovação do autor.
+5. **Archive** (`/opsx-archive`): arquiva o change e atualiza `openspec/specs/`.
+
+Como todo o estado do planejamento vive em arquivo, e não na conversa, qualquer harness ou modelo pode assumir o trabalho a partir daqui: basta ler este arquivo e os artefatos do change em andamento.
 
 Siga a ordem dos changes da seção 5 da proposta inicial (`baseline-specs` primeiro). Antes de começar, rode `openspec list` para ver o que está em andamento.
 
-## Modo de trabalho: pareado
+## Modo de trabalho
 
-O autor está aprendendo e precisa conseguir explicar cada decisão numa entrevista.
+O autor está aprendendo e precisa conseguir explicar cada decisão numa entrevista. É esse o objetivo que o modo de trabalho serve.
 
-- O autor escreve o código. O agente explica a tarefa e o porquê, orienta com dicas e revisa o que foi escrito.
-- Só implemente diretamente quando o autor pedir de forma explícita, e explique cada decisão ao fazer isso.
-- Justifique escolhas citando o módulo da trilha que as fundamenta.
+**Combinado em vigor:** o agente implementa e o autor revisa.
+
+- O agente escreve o código explicando cada decisão enquanto avança. O autor revisa.
+- Justifique toda escolha citando o módulo da trilha que a fundamenta. Quando a decisão não vier da trilha, diga isso e explique o critério usado.
+- **Pare para a revisão do autor depois de cada propose e depois de cada apply, antes do archive.** Não emende uma fase na outra.
+- Registre no `design.md` as alternativas consideradas e o motivo de cada descarte; é esse texto que sustenta a explicação em uma entrevista.
 - Faça uma pergunta por vez e confirme o entendimento antes de avançar.
 - Comunique-se em português do Brasil, de forma direta e sem jargão desnecessário.
+
+Este combinado substitui o modo original, em que o autor escrevia o código e o agente apenas orientava. Se o autor pedir para voltar a esse formato, ele volta a valer.
 
 ## Commits e segurança
 
