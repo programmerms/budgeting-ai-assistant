@@ -43,6 +43,8 @@ Todas as escolhas seguem os módulos ministrados na trilha **DIO Spring Boot Lea
 
 Partindo de um diagnóstico inicial do projeto base (`docs/proposta-inicial.md`), a evolução foi dividida em *changes* pequenos, verificáveis e rastreáveis em `openspec/changes/archive/`:
 
+Para entender a organização entre specs atuais, changes ativos e histórico arquivado, consulte o [`Guia rápido do OpenSpec`](docs/guia-openspec.md).
+
 1. **`baseline-specs` (Change 0):** levantamento e especificação formal do comportamento original do projeto base, incluindo seus defeitos (D-01 a D-07).
 2. **`fix-base-defects` (Change 1):**
    - **Conversão monetária exata (D-01, RF-01):** correção de `TransactionOutput` e `TransactionResponse` para converter centavos (`long`) em reais (`BigDecimal.valueOf(amount, 2)`), eliminando o erro em que `8000` centavos (R$ 80,00) eram exibidos como `8000.0`.

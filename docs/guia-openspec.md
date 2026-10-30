@@ -53,7 +53,8 @@ Cada cenário vira um teste quase palavra por palavra:
 ```java
 @Test
 void givenAmountInCentsWhenConvertingThenShowsReais() {
-    final var transaction = new Transaction("Mercado", 8000, Category.GROCERIES);
+    final var transaction = new Transaction(
+            new OwnerId(), "Mercado", 8000, Category.GROCERIES);
 
     final var output = TransactionOutput.from(transaction);
 
@@ -80,10 +81,21 @@ flowchart LR
 | Apply | `/opsx-apply` | Executa o `tasks.md`, marcando `[x]` em cada tarefa | Sim |
 | Archive | `/opsx-archive` | Aplica os deltas nas specs oficiais e move o change para `archive/` | Não |
 
-Duas pastas importam:
+Três pastas resumem o estado do OpenSpec:
 
-- `openspec/changes/<nome>/`: o rascunho, ou seja, o que está **em andamento**.
-- `openspec/specs/`: a **verdade oficial** do sistema. Só muda no archive.
+- `openspec/changes/<nome>/`: o change que está **em andamento**, com proposta, deltas, design e tarefas;
+- `openspec/specs/`: a **verdade oficial atual**, organizada por capacidade e atualizada no archive;
+- `openspec/changes/archive/<data>-<nome>/`: o histórico completo dos changes concluídos.
+
+As specs principais não guardam cada etapa do desenvolvimento. Elas acumulam o resultado final de vários changes e respondem “como o sistema deve funcionar hoje?”. Para entender por que uma regra existe, quais alternativas foram descartadas ou quais tarefas foram executadas, consulte o change correspondente no archive.
+
+Exemplo: `openspec/specs/transactions/spec.md` contém hoje a regra de isolamento por proprietário. A motivação, as decisões e as 22 tarefas que introduziram essa regra estão preservadas em `openspec/changes/archive/2026-10-30-add-transaction-ownership/`.
+
+Uma analogia útil:
+
+- `specs/` é a legislação vigente;
+- `changes/` contém os projetos de lei em análise;
+- `archive/` preserva o histórico das leis aprovadas.
 
 ## 5. Deltas: como uma spec muda
 
@@ -153,7 +165,7 @@ Equivalência com o Spec Kit:
 
 ## 9. Os changes deste projeto
 
-A ordem vem da seção 5 da proposta inicial. Cada change só começa depois que o anterior foi arquivado.
+Os primeiros changes seguem a ordem da seção 5 da proposta inicial. As evoluções de IA e segurança vieram depois, sempre começando após o archive do change anterior.
 
 | # | Change | Conteúdo |
 |---|---|---|
@@ -166,5 +178,9 @@ A ordem vem da seção 5 da proposta inicial. Cada change só começa depois que
 | 5 | `extract-voice-command-use-case` | Tirar a IA do controller e criar o endpoint de texto |
 | 6 | `improve-assistant-prompt` | Prompt melhor para a IA |
 | 7 | `document-api` | Documentação da API e README final |
+| 8 | `improve-registration-category-inference` | Inferência de categoria a partir da descrição |
+| 9 | `restrict-assistant-to-financial-scope` | Restrição do assistente ao escopo financeiro |
+| 10 | `add-user-accounts-and-authentication` | Contas, aprovação, papéis e autenticação por sessão |
+| 11 | `add-transaction-ownership` | Propriedade obrigatória e isolamento dos gastos por usuário |
 
 Para saber onde o projeto está agora, rode `openspec list` e veja `openspec/changes/archive/` (o que já foi concluído).
