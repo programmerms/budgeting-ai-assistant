@@ -6,7 +6,7 @@ import java.util.List;
 public interface TransactionRepository {
     Transaction save(Transaction transaction);
 
-    List<Transaction> findAllByCategory(Category category);
+    List<Transaction> findAllByOwnerIdAndCategory(OwnerId ownerId, Category category);
 
-    List<Transaction> findAllByCreatedAtBetween(Instant from, Instant to);
+    List<Transaction> findAllByOwnerIdAndCreatedAtBetween(OwnerId ownerId, Instant from, Instant to);
 }

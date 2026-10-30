@@ -10,6 +10,7 @@ import dio.budgeting.application.output.CategorySummaryOutput;
 import dio.budgeting.application.output.TransactionOutput;
 import dio.budgeting.infrastructure.ai.request.PersistTransactionToolRequest;
 import dio.budgeting.infrastructure.ai.request.TransactionsPeriodToolRequest;
+import dio.budgeting.infrastructure.security.AuthenticatedOwnerProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,11 +23,13 @@ import java.util.List;
 
 import static dio.budgeting.support.TestConstants.AMOUNT_IN_REAIS;
 import static dio.budgeting.support.TestConstants.CATEGORY;
+import static dio.budgeting.support.TestConstants.OWNER_ID;
 import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction;
 import static dio.budgeting.support.request.PersistTransactionToolRequestSupport.defaultPersistTransactionToolRequest;
 import static dio.budgeting.support.request.TransactionsPeriodToolRequestSupport.defaultTransactionsPeriodToolRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,6 +48,9 @@ class TransactionToolsTest {
 
     @Mock
     private ListTransactionsByPeriodUseCase listTransactionsByPeriodUseCase;
+
+    @Mock
+    private AuthenticatedOwnerProvider authenticatedOwnerProvider;
 
     @InjectMocks
     private TransactionTools transactionTools;
@@ -101,13 +107,15 @@ class TransactionToolsTest {
 
     private void setupGivenToolRequestWhenPersistTransactionIsCalledThenTheUseCaseReceivesTheConvertedInputAndItsOutputIsReturned(
             final TransactionOutput output) {
-        when(persistTransactionUseCase.execute(any(PersistTransactionInput.class))).thenReturn(output);
+        when(authenticatedOwnerProvider.currentOwnerId()).thenReturn(OWNER_ID);
+        when(persistTransactionUseCase.execute(eq(OWNER_ID), any(PersistTransactionInput.class)))
+                .thenReturn(output);
     }
 
     private void verifyGivenToolRequestWhenPersistTransactionIsCalledThenTheUseCaseReceivesTheConvertedInputAndItsOutputIsReturned(
             final TransactionOutput actual, final PersistTransactionToolRequest request, final TransactionOutput expected) {
         final var captor = ArgumentCaptor.forClass(PersistTransactionInput.class);
-        verify(persistTransactionUseCase, times(1)).execute(captor.capture());
+        verify(persistTransactionUseCase, times(1)).execute(eq(OWNER_ID), captor.capture());
         assertThat(captor.getValue()).isEqualTo(new PersistTransactionInput(
                 request.description(), request.amount(), request.category()));
 
@@ -116,35 +124,39 @@ class TransactionToolsTest {
 
     private void setupGivenCategoryWhenListTransactionsByCategoryIsCalledThenTheUseCaseReceivesTheCategoryAndItsOutputsAreReturned(
             final List<TransactionOutput> outputs) {
-        when(listTransactionsByCategoryUseCase.execute(CATEGORY)).thenReturn(outputs);
+        when(authenticatedOwnerProvider.currentOwnerId()).thenReturn(OWNER_ID);
+        when(listTransactionsByCategoryUseCase.execute(OWNER_ID, CATEGORY)).thenReturn(outputs);
     }
 
     private void verifyGivenCategoryWhenListTransactionsByCategoryIsCalledThenTheUseCaseReceivesTheCategoryAndItsOutputsAreReturned(
             final List<TransactionOutput> actual, final List<TransactionOutput> expected) {
-        verify(listTransactionsByCategoryUseCase, times(1)).execute(CATEGORY);
+        verify(listTransactionsByCategoryUseCase, times(1)).execute(OWNER_ID, CATEGORY);
         assertThat(actual).isSameAs(expected);
     }
 
     private void setupGivenCategoryWhenSummarizeTransactionsByCategoryIsCalledThenTheUseCaseReceivesTheCategoryAndItsSummaryIsReturned(
             final CategorySummaryOutput summary) {
-        when(summarizeTransactionsByCategoryUseCase.execute(CATEGORY)).thenReturn(summary);
+        when(authenticatedOwnerProvider.currentOwnerId()).thenReturn(OWNER_ID);
+        when(summarizeTransactionsByCategoryUseCase.execute(OWNER_ID, CATEGORY)).thenReturn(summary);
     }
 
     private void verifyGivenCategoryWhenSummarizeTransactionsByCategoryIsCalledThenTheUseCaseReceivesTheCategoryAndItsSummaryIsReturned(
             final CategorySummaryOutput actual, final CategorySummaryOutput expected) {
-        verify(summarizeTransactionsByCategoryUseCase, times(1)).execute(CATEGORY);
+        verify(summarizeTransactionsByCategoryUseCase, times(1)).execute(OWNER_ID, CATEGORY);
         assertThat(actual).isSameAs(expected);
     }
 
     private void setupGivenPeriodToolRequestWhenListTransactionsByPeriodIsCalledThenTheUseCaseReceivesTheConvertedInputAndItsOutputsAreReturned(
             final List<TransactionOutput> outputs) {
-        when(listTransactionsByPeriodUseCase.execute(any(TransactionsPeriodInput.class))).thenReturn(outputs);
+        when(authenticatedOwnerProvider.currentOwnerId()).thenReturn(OWNER_ID);
+        when(listTransactionsByPeriodUseCase.execute(eq(OWNER_ID), any(TransactionsPeriodInput.class)))
+                .thenReturn(outputs);
     }
 
     private void verifyGivenPeriodToolRequestWhenListTransactionsByPeriodIsCalledThenTheUseCaseReceivesTheConvertedInputAndItsOutputsAreReturned(
             final List<TransactionOutput> actual, final TransactionsPeriodToolRequest request, final List<TransactionOutput> expected) {
         final var captor = ArgumentCaptor.forClass(TransactionsPeriodInput.class);
-        verify(listTransactionsByPeriodUseCase, times(1)).execute(captor.capture());
+        verify(listTransactionsByPeriodUseCase, times(1)).execute(eq(OWNER_ID), captor.capture());
         assertThat(captor.getValue()).isEqualTo(new TransactionsPeriodInput(request.from(), request.to()));
 
         assertThat(actual).isSameAs(expected);

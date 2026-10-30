@@ -20,8 +20,10 @@ import org.testcontainers.mysql.MySQLContainer;
 import tools.jackson.databind.json.JsonMapper;
 
 import static dio.budgeting.support.request.TransactionRequestSupport.defaultTransactionRequest;
+import static dio.budgeting.support.AuthenticatedUserSupport.defaultAuthenticatedUser;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -130,12 +132,12 @@ class SecurityConfigApiIntegrationTest {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
     @DisplayName("Given a session with the user role When POST /transactions is called Then it responds 201")
     void givenSessionWithUserRoleWhenPostTransactionsIsCalledThenItResponds201() throws Exception {
         final var request = defaultTransactionRequest().create();
 
         final var result = mockMvc.perform(post("/transactions")
+                .with(user(defaultAuthenticatedUser().create()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(jsonMapper.writeValueAsString(request)));
 

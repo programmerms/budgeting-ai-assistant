@@ -10,6 +10,7 @@ import static dio.budgeting.support.TestConstants.AMOUNT_IN_CENTS;
 import static dio.budgeting.support.TestConstants.CATEGORY;
 import static dio.budgeting.support.TestConstants.CREATED_AT;
 import static dio.budgeting.support.TestConstants.DESCRIPTION;
+import static dio.budgeting.support.TestConstants.OWNER_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
@@ -18,7 +19,7 @@ class TransactionTest {
     @Test
     @DisplayName("Given valid fields When creating a Transaction Then it generates an ID, stores the fields and leaves createdAt null")
     void givenValidFieldsWhenCreatingTransactionThenItGeneratesIdStoresFieldsAndLeavesCreatedAtNull() {
-        final var actual = new Transaction(DESCRIPTION, AMOUNT_IN_CENTS, CATEGORY);
+        final var actual = new Transaction(OWNER_ID, DESCRIPTION, AMOUNT_IN_CENTS, CATEGORY);
 
         verifyGivenValidFieldsWhenCreatingTransactionThenItGeneratesIdStoresFieldsAndLeavesCreatedAtNull(actual);
     }
@@ -28,16 +29,33 @@ class TransactionTest {
     void givenValidFieldsIncludingCreatedAtWhenReconstructingTransactionThenAllFieldsAreStored() {
         final var id = new TransactionId();
 
-        final var actual = new Transaction(id, DESCRIPTION, AMOUNT_IN_CENTS, CATEGORY, CREATED_AT);
+        final var actual = new Transaction(OWNER_ID, id, DESCRIPTION, AMOUNT_IN_CENTS, CATEGORY, CREATED_AT);
 
         verifyGivenValidFieldsIncludingCreatedAtWhenReconstructingTransactionThenAllFieldsAreStored(actual, id);
+    }
+
+    @Test
+    @DisplayName("Given an owner When creating a Transaction Then it stores the owner")
+    void givenOwnerWhenCreatingTransactionThenItStoresTheOwner() {
+        final var actual = new Transaction(OWNER_ID, DESCRIPTION, AMOUNT_IN_CENTS, CATEGORY);
+
+        verifyGivenOwnerWhenCreatingTransactionThenItStoresTheOwner(actual, OWNER_ID);
+    }
+
+    @Test
+    @DisplayName("Given a null owner When creating a Transaction Then it throws IllegalArgumentException")
+    void givenNullOwnerWhenCreatingTransactionThenItThrowsIllegalArgumentException() {
+        final var thrown = catchThrowable(
+                () -> new Transaction(null, DESCRIPTION, AMOUNT_IN_CENTS, CATEGORY));
+
+        verifyGivenNullOwnerWhenCreatingTransactionThenItThrowsIllegalArgumentException(thrown);
     }
 
     @Test
     @DisplayName("Given a null TransactionId When creating a Transaction Then it throws IllegalArgumentException")
     void givenNullTransactionIdWhenCreatingTransactionThenItThrowsIllegalArgumentException() {
         final var thrown = catchThrowable(
-                () -> new Transaction(null, DESCRIPTION, AMOUNT_IN_CENTS, CATEGORY));
+                () -> new Transaction(OWNER_ID, null, DESCRIPTION, AMOUNT_IN_CENTS, CATEGORY));
 
         verifyGivenNullTransactionIdWhenCreatingTransactionThenItThrowsIllegalArgumentException(thrown);
     }
@@ -49,7 +67,7 @@ class TransactionTest {
     void givenBlankDescriptionWhenCreatingTransactionThenItThrowsIllegalArgumentException(
             final String invalidDescription) {
         final var thrown = catchThrowable(
-                () -> new Transaction(invalidDescription, AMOUNT_IN_CENTS, CATEGORY));
+                () -> new Transaction(OWNER_ID, invalidDescription, AMOUNT_IN_CENTS, CATEGORY));
 
         verifyGivenBlankDescriptionWhenCreatingTransactionThenItThrowsIllegalArgumentException(thrown);
     }
@@ -60,7 +78,7 @@ class TransactionTest {
     void givenNonPositiveAmountWhenCreatingTransactionThenItThrowsIllegalArgumentException(
             final long invalidAmount) {
         final var thrown = catchThrowable(
-                () -> new Transaction(DESCRIPTION, invalidAmount, CATEGORY));
+                () -> new Transaction(OWNER_ID, DESCRIPTION, invalidAmount, CATEGORY));
 
         verifyGivenNonPositiveAmountWhenCreatingTransactionThenItThrowsIllegalArgumentException(thrown);
     }
@@ -69,7 +87,7 @@ class TransactionTest {
     @DisplayName("Given a null category When creating a Transaction Then it throws IllegalArgumentException")
     void givenNullCategoryWhenCreatingTransactionThenItThrowsIllegalArgumentException() {
         final var thrown = catchThrowable(
-                () -> new Transaction(DESCRIPTION, AMOUNT_IN_CENTS, null));
+                () -> new Transaction(OWNER_ID, DESCRIPTION, AMOUNT_IN_CENTS, null));
 
         verifyGivenNullCategoryWhenCreatingTransactionThenItThrowsIllegalArgumentException(thrown);
     }
@@ -77,6 +95,7 @@ class TransactionTest {
     private void verifyGivenValidFieldsWhenCreatingTransactionThenItGeneratesIdStoresFieldsAndLeavesCreatedAtNull(
             final Transaction actual) {
         assertThat(actual.getId()).isNotNull();
+        assertThat(actual.getOwnerId()).isEqualTo(OWNER_ID);
         assertThat(actual.getId().uuid()).isNotNull();
         assertThat(actual.getDescription()).isEqualTo(DESCRIPTION);
         assertThat(actual.getAmount()).isEqualTo(AMOUNT_IN_CENTS);
@@ -87,10 +106,23 @@ class TransactionTest {
     private void verifyGivenValidFieldsIncludingCreatedAtWhenReconstructingTransactionThenAllFieldsAreStored(
             final Transaction actual, final TransactionId expectedId) {
         assertThat(actual.getId()).isEqualTo(expectedId);
+        assertThat(actual.getOwnerId()).isEqualTo(OWNER_ID);
         assertThat(actual.getDescription()).isEqualTo(DESCRIPTION);
         assertThat(actual.getAmount()).isEqualTo(AMOUNT_IN_CENTS);
         assertThat(actual.getCategory()).isEqualTo(CATEGORY);
         assertThat(actual.getCreatedAt()).isEqualTo(CREATED_AT);
+    }
+
+    private void verifyGivenOwnerWhenCreatingTransactionThenItStoresTheOwner(
+            final Transaction actual, final OwnerId expected) {
+        assertThat(actual.getOwnerId()).isEqualTo(expected);
+    }
+
+    private void verifyGivenNullOwnerWhenCreatingTransactionThenItThrowsIllegalArgumentException(
+            final Throwable actual) {
+        assertThat(actual)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Owner ID must not be null");
     }
 
     private void verifyGivenNullTransactionIdWhenCreatingTransactionThenItThrowsIllegalArgumentException(

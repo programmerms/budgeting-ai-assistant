@@ -3,6 +3,7 @@ package dio.budgeting.application;
 import dio.budgeting.application.input.PersistTransactionInput;
 import dio.budgeting.application.output.TransactionOutput;
 import dio.budgeting.domain.Transaction;
+import dio.budgeting.domain.OwnerId;
 import dio.budgeting.domain.TransactionRepository;
 import org.springframework.stereotype.Service;
 
@@ -14,9 +15,9 @@ public class PersistTransactionUseCase {
         this.transactionRepository = transactionRepository;
     }
 
-    public TransactionOutput execute(PersistTransactionInput input) {
+    public TransactionOutput execute(OwnerId ownerId, PersistTransactionInput input) {
         var transaction = transactionRepository.save(
-                new Transaction(input.description(), input.amount(), input.category()));
+                new Transaction(ownerId, input.description(), input.amount(), input.category()));
 
         return TransactionOutput.from(transaction);
     }

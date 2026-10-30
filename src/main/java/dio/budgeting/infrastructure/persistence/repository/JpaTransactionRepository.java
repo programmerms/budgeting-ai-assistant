@@ -1,6 +1,7 @@
 package dio.budgeting.infrastructure.persistence.repository;
 
 import dio.budgeting.domain.Category;
+import dio.budgeting.domain.OwnerId;
 import dio.budgeting.domain.Transaction;
 import dio.budgeting.domain.TransactionRepository;
 import dio.budgeting.infrastructure.persistence.entity.TransactionEntity;
@@ -24,16 +25,16 @@ public class JpaTransactionRepository implements TransactionRepository {
     }
 
     @Override
-    public List<Transaction> findAllByCategory(Category category) {
-        return transactionEntityRepository.findAllByCategory(category)
+    public List<Transaction> findAllByOwnerIdAndCategory(OwnerId ownerId, Category category) {
+        return transactionEntityRepository.findAllByOwnerIdAndCategory(ownerId.uuid(), category)
                 .stream()
                 .map(TransactionEntity::toDomain)
                 .toList();
     }
 
     @Override
-    public List<Transaction> findAllByCreatedAtBetween(Instant from, Instant to) {
-        return transactionEntityRepository.findAllByCreatedAtBetween(from, to)
+    public List<Transaction> findAllByOwnerIdAndCreatedAtBetween(OwnerId ownerId, Instant from, Instant to) {
+        return transactionEntityRepository.findAllByOwnerIdAndCreatedAtBetween(ownerId.uuid(), from, to)
                 .stream()
                 .map(TransactionEntity::toDomain)
                 .toList();

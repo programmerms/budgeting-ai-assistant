@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface TransactionEntityRepository extends CrudRepository<TransactionEntity, UUID> {
-    List<TransactionEntity> findAllByCategory(Category category);
+    List<TransactionEntity> findAllByOwnerIdAndCategory(UUID ownerId, Category category);
 
-    List<TransactionEntity> findAllByCreatedAtBetween(Instant from, Instant to);
+    List<TransactionEntity> findAllByOwnerIdAndCreatedAtBetween(UUID ownerId, Instant from, Instant to);
 }

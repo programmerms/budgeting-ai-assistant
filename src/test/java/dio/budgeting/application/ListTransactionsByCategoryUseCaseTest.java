@@ -14,6 +14,7 @@ import java.util.List;
 
 import static dio.budgeting.support.TestConstants.AMOUNT_IN_REAIS;
 import static dio.budgeting.support.TestConstants.CATEGORY;
+import static dio.budgeting.support.TestConstants.OWNER_ID;
 import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.times;
@@ -35,19 +36,20 @@ class ListTransactionsByCategoryUseCaseTest {
         final var stored = defaultTransaction().create();
         setupGivenStoredTransactionsWhenExecuteIsCalledWithTheirCategoryThenTheyAreReturnedInReais(stored);
 
-        final var result = useCase.execute(CATEGORY);
+        final var result = useCase.execute(OWNER_ID, CATEGORY);
 
         verifyGivenStoredTransactionsWhenExecuteIsCalledWithTheirCategoryThenTheyAreReturnedInReais(result, stored);
     }
 
     private void setupGivenStoredTransactionsWhenExecuteIsCalledWithTheirCategoryThenTheyAreReturnedInReais(
             final Transaction stored) {
-        when(transactionRepository.findAllByCategory(CATEGORY)).thenReturn(List.of(stored));
+        when(transactionRepository.findAllByOwnerIdAndCategory(OWNER_ID, CATEGORY))
+                .thenReturn(List.of(stored));
     }
 
     private void verifyGivenStoredTransactionsWhenExecuteIsCalledWithTheirCategoryThenTheyAreReturnedInReais(
             final List<TransactionOutput> actual, final Transaction expected) {
-        verify(transactionRepository, times(1)).findAllByCategory(CATEGORY);
+        verify(transactionRepository, times(1)).findAllByOwnerIdAndCategory(OWNER_ID, CATEGORY);
         assertThat(actual).containsExactly(new TransactionOutput(
                 expected.getId().uuid().toString(),
                 expected.getDescription(),

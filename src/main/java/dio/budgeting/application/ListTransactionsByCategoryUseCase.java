@@ -2,8 +2,10 @@ package dio.budgeting.application;
 
 import dio.budgeting.application.output.TransactionOutput;
 import dio.budgeting.domain.Category;
+import dio.budgeting.domain.OwnerId;
 import dio.budgeting.domain.TransactionRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
 
 import java.util.List;
 
@@ -15,7 +17,11 @@ public class ListTransactionsByCategoryUseCase {
         this.transactionRepository = transactionRepository;
     }
 
-    public List<TransactionOutput> execute(Category category) {
-        return transactionRepository.findAllByCategory(category).stream().map(TransactionOutput::from).toList();
+    public List<TransactionOutput> execute(OwnerId ownerId, Category category) {
+        Assert.notNull(ownerId, "Owner ID must not be null");
+        return transactionRepository.findAllByOwnerIdAndCategory(ownerId, category)
+                .stream()
+                .map(TransactionOutput::from)
+                .toList();
     }
 }

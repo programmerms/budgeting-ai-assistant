@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static dio.budgeting.support.TestConstants.AMOUNT_IN_REAIS;
+import static dio.budgeting.support.TestConstants.OWNER_ID;
 import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction;
 import static dio.budgeting.support.input.PersistTransactionInputSupport.defaultPersistTransactionInput;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,7 +44,7 @@ class PersistTransactionUseCaseTest {
         final var saved = defaultTransaction().create();
         setupGivenValidInputWhenExecuteIsCalledThenTransactionIsSavedAndReturnedInReais(saved);
 
-        final var result = useCase.execute(input);
+        final var result = useCase.execute(OWNER_ID, input);
 
         verifyGivenValidInputWhenExecuteIsCalledThenTransactionIsSavedAndReturnedInReais(result, input, saved);
     }
@@ -58,7 +59,7 @@ class PersistTransactionUseCaseTest {
                 .set(field(PersistTransactionInput::description), invalidDescription)
                 .create();
 
-        final var thrown = catchThrowable(() -> useCase.execute(input));
+        final var thrown = catchThrowable(() -> useCase.execute(OWNER_ID, input));
 
         verifyGivenInputWithBlankDescriptionWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(thrown);
     }
@@ -72,7 +73,7 @@ class PersistTransactionUseCaseTest {
                 .set(field(PersistTransactionInput::amount), invalidAmount)
                 .create();
 
-        final var thrown = catchThrowable(() -> useCase.execute(input));
+        final var thrown = catchThrowable(() -> useCase.execute(OWNER_ID, input));
 
         verifyGivenInputWithNonPositiveAmountWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(thrown);
     }
@@ -84,9 +85,19 @@ class PersistTransactionUseCaseTest {
                 .set(field(PersistTransactionInput::category), null)
                 .create();
 
-        final var thrown = catchThrowable(() -> useCase.execute(input));
+        final var thrown = catchThrowable(() -> useCase.execute(OWNER_ID, input));
 
         verifyGivenInputWithNullCategoryWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(thrown);
+    }
+
+    @Test
+    @DisplayName("Given a null owner When execute is called Then it throws IllegalArgumentException and nothing is saved")
+    void givenNullOwnerWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved() {
+        final var input = defaultPersistTransactionInput().create();
+
+        final var thrown = catchThrowable(() -> useCase.execute(null, input));
+
+        verifyGivenNullOwnerWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(thrown);
     }
 
     private void setupGivenValidInputWhenExecuteIsCalledThenTransactionIsSavedAndReturnedInReais(
@@ -99,8 +110,9 @@ class PersistTransactionUseCaseTest {
         final var captor = ArgumentCaptor.forClass(Transaction.class);
         verify(transactionRepository, times(1)).save(captor.capture());
         assertThat(captor.getValue())
-                .extracting(Transaction::getDescription, Transaction::getAmount, Transaction::getCategory)
-                .containsExactly(input.description(), input.amount(), input.category());
+                .extracting(Transaction::getOwnerId, Transaction::getDescription,
+                        Transaction::getAmount, Transaction::getCategory)
+                .containsExactly(OWNER_ID, input.description(), input.amount(), input.category());
 
         assertThat(actual).isEqualTo(new TransactionOutput(
                 expected.getId().uuid().toString(),
@@ -108,6 +120,14 @@ class PersistTransactionUseCaseTest {
                 expected.getCategory().name(),
                 AMOUNT_IN_REAIS,
                 expected.getCreatedAt()));
+    }
+
+    private void verifyGivenNullOwnerWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(
+            final Throwable actual) {
+        assertThat(actual)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Owner ID must not be null");
+        assertNothingPersisted();
     }
 
     private void verifyGivenInputWithBlankDescriptionWhenExecuteIsCalledThenItThrowsIllegalArgumentExceptionAndNothingIsSaved(

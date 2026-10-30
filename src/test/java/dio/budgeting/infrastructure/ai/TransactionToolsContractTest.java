@@ -4,6 +4,7 @@ import dio.budgeting.application.ListTransactionsByCategoryUseCase;
 import dio.budgeting.application.ListTransactionsByPeriodUseCase;
 import dio.budgeting.application.PersistTransactionUseCase;
 import dio.budgeting.application.SummarizeTransactionsByCategoryUseCase;
+import dio.budgeting.infrastructure.security.AuthenticatedOwnerProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -124,6 +125,9 @@ class TransactionToolsContractTest {
     @Mock
     private ListTransactionsByPeriodUseCase listTransactionsByPeriodUseCase;
 
+    @Mock
+    private AuthenticatedOwnerProvider authenticatedOwnerProvider;
+
     @InjectMocks
     private TransactionTools transactionTools;
 
@@ -159,6 +163,16 @@ class TransactionToolsContractTest {
         verifyGivenRegisteredToolsWhenReadingTheListByPeriodDefinitionThenNameDescriptionAndSchemaMatch(actual);
     }
 
+    @Test
+    @DisplayName("Given the registered tools When reading their schemas Then no owner parameter is exposed")
+    void givenRegisteredToolsWhenReadingTheirSchemasThenNoOwnerParameterIsExposed() {
+        final var actual = Arrays.stream(ToolCallbacks.from(transactionTools))
+                .map(callback -> callback.getToolDefinition().inputSchema())
+                .toList();
+
+        verifyGivenRegisteredToolsWhenReadingTheirSchemasThenNoOwnerParameterIsExposed(actual);
+    }
+
     private void verifyGivenRegisteredToolsWhenReadingThePersistTransactionDefinitionThenNameDescriptionAndSchemaAreUnchanged(
             final ToolDefinition actual) throws Exception {
         assertThat(actual.description()).isEqualTo("Persiste uma nova transação financeira");
@@ -181,6 +195,11 @@ class TransactionToolsContractTest {
             final ToolDefinition actual) throws Exception {
         assertThat(actual.description()).isEqualTo("Lista transações financeiras realizadas em um período de datas");
         JSONAssert.assertEquals(LIST_TRANSACTIONS_BY_PERIOD_SCHEMA, actual.inputSchema(), JSONCompareMode.STRICT);
+    }
+
+    private void verifyGivenRegisteredToolsWhenReadingTheirSchemasThenNoOwnerParameterIsExposed(
+            final java.util.List<String> actual) {
+        assertThat(actual).allSatisfy(schema -> assertThat(schema.toLowerCase()).doesNotContain("owner"));
     }
 
     private ToolDefinition findToolDefinition(final String name) {

@@ -18,6 +18,8 @@ import java.time.Instant;
 import java.util.List;
 
 import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction;
+import static dio.budgeting.support.TestConstants.OWNER_ID;
+import static dio.budgeting.support.TestConstants.SECOND_OWNER_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.instancio.Select.field;
 
@@ -52,52 +54,56 @@ class JpaTransactionRepositoryIntegrationTest {
     }
 
     @Test
-    @DisplayName("Given transactions of two categories When findAllByCategory is called Then only the transactions of that category are returned intact with createdAt populated")
-    void givenTransactionsOfTwoCategoriesWhenFindAllByCategoryIsCalledThenOnlyTheTransactionsOfThatCategoryAreReturnedIntactWithCreatedAtPopulated() {
+    @DisplayName("Given transactions of two owners When findAllByOwnerIdAndCategory is called Then only the owner transaction is returned")
+    void givenTransactionsOfTwoOwnersWhenFindAllByOwnerIdAndCategoryIsCalledThenOnlyTheOwnerTransactionIsReturned() {
         final var groceries = defaultTransaction()
+                .set(field(Transaction::getOwnerId), OWNER_ID)
                 .set(field(Transaction::getCategory), Category.GROCERIES)
                 .set(field(Transaction::getCreatedAt), null)
                 .create();
-        final var pharma = defaultTransaction()
-                .set(field(Transaction::getCategory), Category.PHARMA)
+        final var otherOwnerGroceries = defaultTransaction()
+                .set(field(Transaction::getOwnerId), SECOND_OWNER_ID)
+                .set(field(Transaction::getCategory), Category.GROCERIES)
                 .set(field(Transaction::getCreatedAt), null)
                 .create();
-        setupGivenTransactionsOfTwoCategoriesWhenFindAllByCategoryIsCalledThenOnlyTheTransactionsOfThatCategoryAreReturnedIntactWithCreatedAtPopulated(
-                groceries, pharma);
+        setupGivenTransactionsOfTwoOwnersWhenFindAllByOwnerIdAndCategoryIsCalledThenOnlyTheOwnerTransactionIsReturned(
+                groceries, otherOwnerGroceries);
 
-        final var result = repository.findAllByCategory(Category.GROCERIES);
+        final var result = repository.findAllByOwnerIdAndCategory(OWNER_ID, Category.GROCERIES);
 
-        verifyGivenTransactionsOfTwoCategoriesWhenFindAllByCategoryIsCalledThenOnlyTheTransactionsOfThatCategoryAreReturnedIntactWithCreatedAtPopulated(
+        verifyGivenTransactionsOfTwoOwnersWhenFindAllByOwnerIdAndCategoryIsCalledThenOnlyTheOwnerTransactionIsReturned(
                 result, groceries);
     }
 
     @Test
-    @DisplayName("Given transactions inside and outside a period When findAllByCreatedAtBetween is called Then only the transactions inside the period are returned")
-    void givenTransactionsInsideAndOutsidePeriodWhenFindAllByCreatedAtBetweenIsCalledThenOnlyTransactionsInsidePeriodAreReturned() {
-        final var inside = defaultTransaction()
+    @DisplayName("Given transactions of two owners in a period When findAllByOwnerIdAndCreatedAtBetween is called Then only the owner transaction is returned")
+    void givenTransactionsOfTwoOwnersInPeriodWhenFindAllByOwnerIdAndCreatedAtBetweenIsCalledThenOnlyTheOwnerTransactionIsReturned() {
+        final var ownerTransaction = defaultTransaction()
+                .set(field(Transaction::getOwnerId), OWNER_ID)
                 .set(field(Transaction::getCreatedAt), null)
                 .create();
-        final var outside = defaultTransaction()
+        final var otherOwnerTransaction = defaultTransaction()
+                .set(field(Transaction::getOwnerId), SECOND_OWNER_ID)
                 .set(field(Transaction::getCreatedAt), null)
                 .create();
         final var from = Instant.parse("2026-10-01T00:00:00Z");
         final var to = Instant.parse("2026-10-31T23:59:59Z");
-        setupGivenTransactionsInsideAndOutsidePeriodWhenFindAllByCreatedAtBetweenIsCalledThenOnlyTransactionsInsidePeriodAreReturned(
-                inside, outside);
+        setupGivenTransactionsOfTwoOwnersInPeriodWhenFindAllByOwnerIdAndCreatedAtBetweenIsCalledThenOnlyTheOwnerTransactionIsReturned(
+                ownerTransaction, otherOwnerTransaction);
 
-        final var result = repository.findAllByCreatedAtBetween(from, to);
+        final var result = repository.findAllByOwnerIdAndCreatedAtBetween(OWNER_ID, from, to);
 
-        verifyGivenTransactionsInsideAndOutsidePeriodWhenFindAllByCreatedAtBetweenIsCalledThenOnlyTransactionsInsidePeriodAreReturned(
-                result, inside);
+        verifyGivenTransactionsOfTwoOwnersInPeriodWhenFindAllByOwnerIdAndCreatedAtBetweenIsCalledThenOnlyTheOwnerTransactionIsReturned(
+                result, ownerTransaction);
     }
 
-    private void setupGivenTransactionsOfTwoCategoriesWhenFindAllByCategoryIsCalledThenOnlyTheTransactionsOfThatCategoryAreReturnedIntactWithCreatedAtPopulated(
+    private void setupGivenTransactionsOfTwoOwnersWhenFindAllByOwnerIdAndCategoryIsCalledThenOnlyTheOwnerTransactionIsReturned(
             final Transaction groceries, final Transaction pharma) {
         repository.save(groceries);
         repository.save(pharma);
     }
 
-    private void verifyGivenTransactionsOfTwoCategoriesWhenFindAllByCategoryIsCalledThenOnlyTheTransactionsOfThatCategoryAreReturnedIntactWithCreatedAtPopulated(
+    private void verifyGivenTransactionsOfTwoOwnersWhenFindAllByOwnerIdAndCategoryIsCalledThenOnlyTheOwnerTransactionIsReturned(
             final List<Transaction> actual, final Transaction expected) {
         assertThat(actual)
                 .usingRecursiveFieldByFieldElementComparatorIgnoringFields("createdAt")
@@ -105,7 +111,7 @@ class JpaTransactionRepositoryIntegrationTest {
         assertThat(actual.getFirst().getCreatedAt()).isNotNull();
     }
 
-    private void setupGivenTransactionsInsideAndOutsidePeriodWhenFindAllByCreatedAtBetweenIsCalledThenOnlyTransactionsInsidePeriodAreReturned(
+    private void setupGivenTransactionsOfTwoOwnersInPeriodWhenFindAllByOwnerIdAndCreatedAtBetweenIsCalledThenOnlyTheOwnerTransactionIsReturned(
             final Transaction inside, final Transaction outside) {
         repository.save(inside);
         repository.save(outside);
@@ -115,11 +121,11 @@ class JpaTransactionRepositoryIntegrationTest {
                 inside.getId().uuid().toString());
         jdbcTemplate.update(
                 "UPDATE transaction_entity SET created_at = ? WHERE id = UUID_TO_BIN(?)",
-                Instant.parse("2026-11-05T12:00:00Z"),
+                Instant.parse("2026-10-16T12:00:00Z"),
                 outside.getId().uuid().toString());
     }
 
-    private void verifyGivenTransactionsInsideAndOutsidePeriodWhenFindAllByCreatedAtBetweenIsCalledThenOnlyTransactionsInsidePeriodAreReturned(
+    private void verifyGivenTransactionsOfTwoOwnersInPeriodWhenFindAllByOwnerIdAndCreatedAtBetweenIsCalledThenOnlyTheOwnerTransactionIsReturned(
             final List<Transaction> actual, final Transaction expected) {
         assertThat(actual)
                 .usingRecursiveFieldByFieldElementComparatorIgnoringFields("createdAt")

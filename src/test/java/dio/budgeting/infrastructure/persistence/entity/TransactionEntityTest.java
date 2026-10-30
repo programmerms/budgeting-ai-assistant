@@ -21,6 +21,8 @@ class TransactionEntityTest {
 
     private void verifyGivenTransactionWhenConvertedToEntityAndBackToDomainThenAllFieldsAreKept(
             final Transaction actual, final Transaction expected) {
+        assertThat(TransactionEntity.from(expected).getOwnerId()).isEqualTo(expected.getOwnerId().uuid());
+        assertThat(actual.getOwnerId()).isEqualTo(expected.getOwnerId());
         assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
     }
 }

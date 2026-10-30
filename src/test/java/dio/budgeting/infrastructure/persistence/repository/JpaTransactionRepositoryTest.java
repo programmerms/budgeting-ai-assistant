@@ -1,6 +1,7 @@
 package dio.budgeting.infrastructure.persistence.repository;
 
 import dio.budgeting.domain.Transaction;
+import dio.budgeting.domain.OwnerId;
 import dio.budgeting.domain.TransactionId;
 import dio.budgeting.infrastructure.persistence.entity.TransactionEntity;
 import org.junit.jupiter.api.DisplayName;
@@ -16,6 +17,8 @@ import java.util.List;
 
 import static dio.budgeting.support.TestConstants.CATEGORY;
 import static dio.budgeting.support.TestConstants.CREATED_AT;
+import static dio.budgeting.support.TestConstants.OWNER_ID;
+import static dio.budgeting.support.TestConstants.OWNER_UUID;
 import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction;
 import static dio.budgeting.support.entity.TransactionEntitySupport.defaultTransactionEntity;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,7 +55,7 @@ class JpaTransactionRepositoryTest {
         final var entity = defaultTransactionEntity().create();
         setupGivenStoredEntitiesWhenFindAllByCategoryIsCalledThenTheEntitiesOfTheCategoryAreReturnedAsDomain(entity);
 
-        final var result = repository.findAllByCategory(CATEGORY);
+        final var result = repository.findAllByOwnerIdAndCategory(OWNER_ID, CATEGORY);
 
         verifyGivenStoredEntitiesWhenFindAllByCategoryIsCalledThenTheEntitiesOfTheCategoryAreReturnedAsDomain(
                 result, entity);
@@ -67,7 +70,7 @@ class JpaTransactionRepositoryTest {
         setupGivenStoredEntitiesWhenFindAllByCreatedAtBetweenIsCalledThenTheEntitiesInPeriodAreReturnedAsDomain(
                 from, to, entity);
 
-        final var result = repository.findAllByCreatedAtBetween(from, to);
+        final var result = repository.findAllByOwnerIdAndCreatedAtBetween(OWNER_ID, from, to);
 
         verifyGivenStoredEntitiesWhenFindAllByCreatedAtBetweenIsCalledThenTheEntitiesInPeriodAreReturnedAsDomain(
                 result, from, to, entity);
@@ -84,6 +87,7 @@ class JpaTransactionRepositoryTest {
         verify(transactionEntityRepository, times(1)).save(captor.capture());
         assertThat(captor.getValue()).isEqualTo(new TransactionEntity(
                 transaction.getId().uuid(),
+                transaction.getOwnerId().uuid(),
                 transaction.getDescription(),
                 transaction.getAmount(),
                 transaction.getCategory(),
@@ -94,12 +98,13 @@ class JpaTransactionRepositoryTest {
 
     private void setupGivenStoredEntitiesWhenFindAllByCategoryIsCalledThenTheEntitiesOfTheCategoryAreReturnedAsDomain(
             final TransactionEntity entity) {
-        when(transactionEntityRepository.findAllByCategory(CATEGORY)).thenReturn(List.of(entity));
+        when(transactionEntityRepository.findAllByOwnerIdAndCategory(OWNER_UUID, CATEGORY))
+                .thenReturn(List.of(entity));
     }
 
     private void verifyGivenStoredEntitiesWhenFindAllByCategoryIsCalledThenTheEntitiesOfTheCategoryAreReturnedAsDomain(
             final List<Transaction> actual, final TransactionEntity entity) {
-        verify(transactionEntityRepository, times(1)).findAllByCategory(CATEGORY);
+        verify(transactionEntityRepository, times(1)).findAllByOwnerIdAndCategory(OWNER_UUID, CATEGORY);
         assertThat(actual)
                 .usingRecursiveFieldByFieldElementComparator()
                 .containsExactly(toExpectedDomain(entity));
@@ -107,12 +112,14 @@ class JpaTransactionRepositoryTest {
 
     private void setupGivenStoredEntitiesWhenFindAllByCreatedAtBetweenIsCalledThenTheEntitiesInPeriodAreReturnedAsDomain(
             final Instant from, final Instant to, final TransactionEntity entity) {
-        when(transactionEntityRepository.findAllByCreatedAtBetween(from, to)).thenReturn(List.of(entity));
+        when(transactionEntityRepository.findAllByOwnerIdAndCreatedAtBetween(OWNER_UUID, from, to))
+                .thenReturn(List.of(entity));
     }
 
     private void verifyGivenStoredEntitiesWhenFindAllByCreatedAtBetweenIsCalledThenTheEntitiesInPeriodAreReturnedAsDomain(
             final List<Transaction> actual, final Instant from, final Instant to, final TransactionEntity entity) {
-        verify(transactionEntityRepository, times(1)).findAllByCreatedAtBetween(from, to);
+        verify(transactionEntityRepository, times(1))
+                .findAllByOwnerIdAndCreatedAtBetween(OWNER_UUID, from, to);
         assertThat(actual)
                 .usingRecursiveFieldByFieldElementComparator()
                 .containsExactly(toExpectedDomain(entity));
@@ -120,6 +127,7 @@ class JpaTransactionRepositoryTest {
 
     private Transaction toExpectedDomain(final TransactionEntity entity) {
         return new Transaction(
+                new OwnerId(entity.getOwnerId()),
                 new TransactionId(entity.getId()),
                 entity.getDescription(),
                 entity.getAmount(),

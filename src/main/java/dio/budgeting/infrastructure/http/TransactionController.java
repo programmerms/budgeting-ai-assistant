@@ -13,6 +13,7 @@ import dio.budgeting.infrastructure.http.request.TransactionRequest;
 import dio.budgeting.infrastructure.http.response.CategorySummaryResponse;
 import dio.budgeting.infrastructure.http.response.TextCommandResponse;
 import dio.budgeting.infrastructure.http.response.TransactionResponse;
+import dio.budgeting.infrastructure.security.AuthenticatedOwnerProvider;
 import jakarta.validation.Valid;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -44,38 +45,44 @@ public class TransactionController {
     private final ListTransactionsByPeriodUseCase listTransactionsByPeriodUseCase;
     private final ExecuteVoiceCommandUseCase executeVoiceCommandUseCase;
     private final ExecuteTextCommandUseCase executeTextCommandUseCase;
+    private final AuthenticatedOwnerProvider authenticatedOwnerProvider;
 
     public TransactionController(PersistTransactionUseCase persistTransactionUseCase,
                                  ListTransactionsByCategoryUseCase listTransactionsByCategoryUseCase,
                                  SummarizeTransactionsByCategoryUseCase summarizeTransactionsByCategoryUseCase,
                                  ListTransactionsByPeriodUseCase listTransactionsByPeriodUseCase,
                                  ExecuteVoiceCommandUseCase executeVoiceCommandUseCase,
-                                 ExecuteTextCommandUseCase executeTextCommandUseCase) {
+                                 ExecuteTextCommandUseCase executeTextCommandUseCase,
+                                 AuthenticatedOwnerProvider authenticatedOwnerProvider) {
         this.persistTransactionUseCase = persistTransactionUseCase;
         this.listTransactionsByCategoryUseCase = listTransactionsByCategoryUseCase;
         this.summarizeTransactionsByCategoryUseCase = summarizeTransactionsByCategoryUseCase;
         this.listTransactionsByPeriodUseCase = listTransactionsByPeriodUseCase;
         this.executeVoiceCommandUseCase = executeVoiceCommandUseCase;
         this.executeTextCommandUseCase = executeTextCommandUseCase;
+        this.authenticatedOwnerProvider = authenticatedOwnerProvider;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TransactionResponse createTransaction(@RequestBody @Valid TransactionRequest request) {
-        var transaction = persistTransactionUseCase.execute(request.toInput());
+        var transaction = persistTransactionUseCase.execute(
+                authenticatedOwnerProvider.currentOwnerId(), request.toInput());
         return TransactionResponse.from(transaction);
     }
 
     @GetMapping("/summary")
     public CategorySummaryResponse summarizeTransactionsByCategory(@RequestParam Category category) {
-        var summary = summarizeTransactionsByCategoryUseCase.execute(category);
+        var summary = summarizeTransactionsByCategoryUseCase.execute(
+                authenticatedOwnerProvider.currentOwnerId(), category);
         return CategorySummaryResponse.from(summary);
     }
 
     @GetMapping
     public List<TransactionResponse> readTransactionsByPeriod(@RequestParam LocalDate from,
                                                               @RequestParam LocalDate to) {
-        return listTransactionsByPeriodUseCase.execute(new TransactionsPeriodInput(from, to))
+        return listTransactionsByPeriodUseCase.execute(
+                        authenticatedOwnerProvider.currentOwnerId(), new TransactionsPeriodInput(from, to))
                 .stream()
                 .map(TransactionResponse::from)
                 .toList();
@@ -83,7 +90,11 @@ public class TransactionController {
 
     @GetMapping("/{category}")
     public List<TransactionResponse> readTransactions(@PathVariable Category category) {
-        return listTransactionsByCategoryUseCase.execute(category).stream().map(TransactionResponse::from).toList();
+        return listTransactionsByCategoryUseCase.execute(
+                        authenticatedOwnerProvider.currentOwnerId(), category)
+                .stream()
+                .map(TransactionResponse::from)
+                .toList();
     }
 
     @PostMapping(value = "/ai", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "audio/mp3")

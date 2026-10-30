@@ -17,6 +17,7 @@ import dio.budgeting.infrastructure.http.request.TransactionRequest;
 import dio.budgeting.infrastructure.http.response.CategorySummaryResponse;
 import dio.budgeting.infrastructure.http.response.TextCommandResponse;
 import dio.budgeting.infrastructure.http.response.TransactionResponse;
+import dio.budgeting.infrastructure.security.AuthenticatedOwnerProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,11 +38,13 @@ import static dio.budgeting.support.TestConstants.AUDIO_BYTES;
 import static dio.budgeting.support.TestConstants.CATEGORY;
 import static dio.budgeting.support.TestConstants.PERIOD_FROM;
 import static dio.budgeting.support.TestConstants.PERIOD_TO;
+import static dio.budgeting.support.TestConstants.OWNER_ID;
 import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction;
 import static dio.budgeting.support.request.TextCommandRequestSupport.defaultTextCommandRequest;
 import static dio.budgeting.support.request.TransactionRequestSupport.defaultTransactionRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -66,6 +69,9 @@ class TransactionControllerTest {
 
     @Mock
     private ExecuteTextCommandUseCase executeTextCommandUseCase;
+
+    @Mock
+    private AuthenticatedOwnerProvider authenticatedOwnerProvider;
 
     @InjectMocks
     private TransactionController controller;
@@ -143,47 +149,53 @@ class TransactionControllerTest {
 
     private void setupGivenTransactionRequestWhenCreateTransactionIsCalledThenItDelegatesToUseCaseAndReturnsResponse(
             final TransactionOutput output) {
-        when(persistTransactionUseCase.execute(any(PersistTransactionInput.class))).thenReturn(output);
+        when(authenticatedOwnerProvider.currentOwnerId()).thenReturn(OWNER_ID);
+        when(persistTransactionUseCase.execute(eq(OWNER_ID), any(PersistTransactionInput.class)))
+                .thenReturn(output);
     }
 
     private void verifyGivenTransactionRequestWhenCreateTransactionIsCalledThenItDelegatesToUseCaseAndReturnsResponse(
             final TransactionResponse actual, final TransactionRequest request, final TransactionOutput expected) {
-        verify(persistTransactionUseCase, times(1)).execute(request.toInput());
+        verify(persistTransactionUseCase, times(1)).execute(OWNER_ID, request.toInput());
         assertThat(actual).isEqualTo(TransactionResponse.from(expected));
     }
 
     private void setupGivenCategoryWhenSummarizeTransactionsByCategoryIsCalledThenItDelegatesToUseCaseAndReturnsSummary(
             final CategorySummaryOutput output) {
-        when(summarizeTransactionsByCategoryUseCase.execute(CATEGORY)).thenReturn(output);
+        when(authenticatedOwnerProvider.currentOwnerId()).thenReturn(OWNER_ID);
+        when(summarizeTransactionsByCategoryUseCase.execute(OWNER_ID, CATEGORY)).thenReturn(output);
     }
 
     private void verifyGivenCategoryWhenSummarizeTransactionsByCategoryIsCalledThenItDelegatesToUseCaseAndReturnsSummary(
             final CategorySummaryResponse actual, final CategorySummaryOutput expected) {
-        verify(summarizeTransactionsByCategoryUseCase, times(1)).execute(CATEGORY);
+        verify(summarizeTransactionsByCategoryUseCase, times(1)).execute(OWNER_ID, CATEGORY);
         assertThat(actual).isEqualTo(CategorySummaryResponse.from(expected));
     }
 
     private void setupGivenPeriodWhenReadTransactionsByPeriodIsCalledThenItDelegatesToUseCaseAndReturnsResponses(
             final TransactionOutput output) {
-        when(listTransactionsByPeriodUseCase.execute(new TransactionsPeriodInput(PERIOD_FROM, PERIOD_TO)))
+        when(authenticatedOwnerProvider.currentOwnerId()).thenReturn(OWNER_ID);
+        when(listTransactionsByPeriodUseCase.execute(
+                OWNER_ID, new TransactionsPeriodInput(PERIOD_FROM, PERIOD_TO)))
                 .thenReturn(List.of(output));
     }
 
     private void verifyGivenPeriodWhenReadTransactionsByPeriodIsCalledThenItDelegatesToUseCaseAndReturnsResponses(
             final List<TransactionResponse> actual, final TransactionOutput expected) {
         verify(listTransactionsByPeriodUseCase, times(1))
-                .execute(new TransactionsPeriodInput(PERIOD_FROM, PERIOD_TO));
+                .execute(OWNER_ID, new TransactionsPeriodInput(PERIOD_FROM, PERIOD_TO));
         assertThat(actual).containsExactly(TransactionResponse.from(expected));
     }
 
     private void setupGivenCategoryWhenReadTransactionsIsCalledThenItDelegatesToUseCaseAndReturnsResponses(
             final TransactionOutput output) {
-        when(listTransactionsByCategoryUseCase.execute(CATEGORY)).thenReturn(List.of(output));
+        when(authenticatedOwnerProvider.currentOwnerId()).thenReturn(OWNER_ID);
+        when(listTransactionsByCategoryUseCase.execute(OWNER_ID, CATEGORY)).thenReturn(List.of(output));
     }
 
     private void verifyGivenCategoryWhenReadTransactionsIsCalledThenItDelegatesToUseCaseAndReturnsResponses(
             final List<TransactionResponse> actual, final TransactionOutput expected) {
-        verify(listTransactionsByCategoryUseCase, times(1)).execute(CATEGORY);
+        verify(listTransactionsByCategoryUseCase, times(1)).execute(OWNER_ID, CATEGORY);
         assertThat(actual).containsExactly(TransactionResponse.from(expected));
     }
 

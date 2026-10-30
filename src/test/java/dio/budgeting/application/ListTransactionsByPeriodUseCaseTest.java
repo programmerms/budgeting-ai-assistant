@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static dio.budgeting.support.TestConstants.AMOUNT_IN_REAIS;
+import static dio.budgeting.support.TestConstants.OWNER_ID;
 import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction;
 import static dio.budgeting.support.input.TransactionsPeriodInputSupport.defaultTransactionsPeriodInput;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,7 +46,7 @@ class ListTransactionsByPeriodUseCaseTest {
         final var stored = defaultTransaction().create();
         setupGivenValidPeriodWhenExecuteIsCalledThenItQueriesFullUtcDayRangeAndReturnsTransactionsInReais(stored);
 
-        final var result = useCase.execute(input);
+        final var result = useCase.execute(OWNER_ID, input);
 
         verifyGivenValidPeriodWhenExecuteIsCalledThenItQueriesFullUtcDayRangeAndReturnsTransactionsInReais(result, stored);
     }
@@ -53,7 +54,7 @@ class ListTransactionsByPeriodUseCaseTest {
     @Test
     @DisplayName("Given a null input When execute is called Then it throws IllegalArgumentException")
     void givenNullInputWhenExecuteIsCalledThenItThrowsIllegalArgumentException() {
-        final var thrown = catchThrowable(() -> useCase.execute(null));
+        final var thrown = catchThrowable(() -> useCase.execute(OWNER_ID, null));
 
         verifyGivenNullInputWhenExecuteIsCalledThenItThrowsIllegalArgumentException(thrown);
     }
@@ -65,7 +66,7 @@ class ListTransactionsByPeriodUseCaseTest {
                 .set(field(TransactionsPeriodInput::from), null)
                 .create();
 
-        final var thrown = catchThrowable(() -> useCase.execute(input));
+        final var thrown = catchThrowable(() -> useCase.execute(OWNER_ID, input));
 
         verifyGivenNullStartDateWhenExecuteIsCalledThenItThrowsIllegalArgumentException(thrown);
     }
@@ -77,7 +78,7 @@ class ListTransactionsByPeriodUseCaseTest {
                 .set(field(TransactionsPeriodInput::to), null)
                 .create();
 
-        final var thrown = catchThrowable(() -> useCase.execute(input));
+        final var thrown = catchThrowable(() -> useCase.execute(OWNER_ID, input));
 
         verifyGivenNullEndDateWhenExecuteIsCalledThenItThrowsIllegalArgumentException(thrown);
     }
@@ -89,21 +90,22 @@ class ListTransactionsByPeriodUseCaseTest {
                 LocalDate.of(2026, 10, 31),
                 LocalDate.of(2026, 10, 1));
 
-        final var thrown = catchThrowable(() -> useCase.execute(input));
+        final var thrown = catchThrowable(() -> useCase.execute(OWNER_ID, input));
 
         verifyGivenStartDateAfterEndDateWhenExecuteIsCalledThenItThrowsIllegalArgumentException(thrown);
     }
 
     private void setupGivenValidPeriodWhenExecuteIsCalledThenItQueriesFullUtcDayRangeAndReturnsTransactionsInReais(
             final Transaction stored) {
-        when(transactionRepository.findAllByCreatedAtBetween(EXPECTED_FROM_INSTANT, EXPECTED_TO_INSTANT))
+        when(transactionRepository.findAllByOwnerIdAndCreatedAtBetween(
+                OWNER_ID, EXPECTED_FROM_INSTANT, EXPECTED_TO_INSTANT))
                 .thenReturn(List.of(stored));
     }
 
     private void verifyGivenValidPeriodWhenExecuteIsCalledThenItQueriesFullUtcDayRangeAndReturnsTransactionsInReais(
             final List<TransactionOutput> actual, final Transaction expected) {
         verify(transactionRepository, times(1))
-                .findAllByCreatedAtBetween(EXPECTED_FROM_INSTANT, EXPECTED_TO_INSTANT);
+                .findAllByOwnerIdAndCreatedAtBetween(OWNER_ID, EXPECTED_FROM_INSTANT, EXPECTED_TO_INSTANT);
         assertThat(actual).containsExactly(new TransactionOutput(
                 expected.getId().uuid().toString(),
                 expected.getDescription(),

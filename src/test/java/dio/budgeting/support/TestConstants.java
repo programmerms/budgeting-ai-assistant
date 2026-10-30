@@ -1,10 +1,12 @@
 package dio.budgeting.support;
 
 import dio.budgeting.domain.Category;
+import dio.budgeting.domain.OwnerId;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.UUID;
 
 public final class TestConstants {
 
@@ -23,6 +25,10 @@ public final class TestConstants {
     public static final String ENCODED_PASSWORD = "$2a$10$encodedPasswordPlaceholderValue........................";
     public static final String ADMIN_USERNAME = "test-admin";
     public static final String ADMIN_PASSWORD = "test-admin-password";
+    public static final UUID OWNER_UUID = UUID.fromString("10101010-1010-1010-1010-101010101010");
+    public static final OwnerId OWNER_ID = new OwnerId(OWNER_UUID);
+    public static final UUID SECOND_OWNER_UUID = UUID.fromString("20202020-2020-2020-2020-202020202020");
+    public static final OwnerId SECOND_OWNER_ID = new OwnerId(SECOND_OWNER_UUID);
 
     private TestConstants() {
     }

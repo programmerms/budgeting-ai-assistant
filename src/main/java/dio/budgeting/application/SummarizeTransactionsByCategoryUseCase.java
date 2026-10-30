@@ -2,6 +2,7 @@ package dio.budgeting.application;
 
 import dio.budgeting.application.output.CategorySummaryOutput;
 import dio.budgeting.domain.Category;
+import dio.budgeting.domain.OwnerId;
 import dio.budgeting.domain.Transaction;
 import dio.budgeting.domain.TransactionRepository;
 import org.springframework.stereotype.Service;
@@ -17,10 +18,11 @@ public class SummarizeTransactionsByCategoryUseCase {
         this.transactionRepository = transactionRepository;
     }
 
-    public CategorySummaryOutput execute(Category category) {
+    public CategorySummaryOutput execute(OwnerId ownerId, Category category) {
+        Assert.notNull(ownerId, "Owner ID must not be null");
         Assert.notNull(category, "Category must not be null");
 
-        var transactions = transactionRepository.findAllByCategory(category);
+        var transactions = transactionRepository.findAllByOwnerIdAndCategory(ownerId, category);
         long totalInCents = transactions.stream().mapToLong(Transaction::getAmount).sum();
 
         return new CategorySummaryOutput(

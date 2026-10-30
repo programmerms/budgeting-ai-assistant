@@ -8,6 +8,7 @@ import static dio.budgeting.support.TestConstants.AMOUNT_IN_CENTS;
 import static dio.budgeting.support.TestConstants.CATEGORY;
 import static dio.budgeting.support.TestConstants.CREATED_AT;
 import static dio.budgeting.support.TestConstants.DESCRIPTION;
+import static dio.budgeting.support.TestConstants.OWNER_UUID;
 import static org.instancio.Select.field;
 
 public final class TransactionEntitySupport {
@@ -17,6 +18,7 @@ public final class TransactionEntitySupport {
 
     public static InstancioApi<TransactionEntity> defaultTransactionEntity() {
         return Instancio.of(TransactionEntity.class)
+                .set(field(TransactionEntity::getOwnerId), OWNER_UUID)
                 .set(field(TransactionEntity::getDescription), DESCRIPTION)
                 .set(field(TransactionEntity::getAmount), AMOUNT_IN_CENTS)
                 .set(field(TransactionEntity::getCategory), CATEGORY)

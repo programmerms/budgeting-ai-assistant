@@ -1,8 +1,11 @@
 package dio.budgeting.infrastructure.http;
 
 import dio.budgeting.domain.Category;
+import dio.budgeting.domain.OwnerId;
 import dio.budgeting.domain.Transaction;
 import dio.budgeting.domain.TransactionRepository;
+import dio.budgeting.auth.domain.UserAccountId;
+import dio.budgeting.auth.infrastructure.security.AuthenticatedUser;
 import dio.budgeting.infrastructure.http.request.TextCommandRequest;
 import dio.budgeting.infrastructure.http.request.TransactionRequest;
 import dio.budgeting.infrastructure.persistence.repository.TransactionEntityRepository;
@@ -20,7 +23,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.restdocs.RestDocumentationContextProvider;
 import org.springframework.restdocs.RestDocumentationExtension;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.TestConstructor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
@@ -34,6 +36,10 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.Instant;
 
 import static dio.budgeting.support.TestConstants.CATEGORY;
+import static dio.budgeting.support.TestConstants.OWNER_ID;
+import static dio.budgeting.support.TestConstants.SECOND_OWNER_ID;
+import static dio.budgeting.support.TestConstants.SECOND_OWNER_UUID;
+import static dio.budgeting.support.AuthenticatedUserSupport.defaultAuthenticatedUser;
 import static dio.budgeting.support.domain.TransactionSupport.defaultTransaction;
 import static dio.budgeting.support.request.TextCommandRequestSupport.defaultTextCommandRequest;
 import static dio.budgeting.support.request.TransactionRequestSupport.defaultTransactionRequest;
@@ -49,6 +55,7 @@ import static org.springframework.restdocs.request.RequestDocumentation.paramete
 import static org.springframework.restdocs.request.RequestDocumentation.pathParameters;
 import static org.springframework.restdocs.request.RequestDocumentation.queryParameters;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -63,7 +70,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "app.admin.password=test-admin-password"})
 @Testcontainers
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
-@WithMockUser(roles = "USER")
 class TransactionApiIntegrationTest {
 
     @Container
@@ -94,6 +100,7 @@ class TransactionApiIntegrationTest {
     @BeforeEach
     void setUp(final RestDocumentationContextProvider restDocumentation) {
         this.mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
+                .defaultRequest(get("/").with(user(defaultAuthenticatedUser().create())))
                 .apply(springSecurity())
                 .apply(documentationConfiguration(restDocumentation))
                 .build();
@@ -203,6 +210,93 @@ class TransactionApiIntegrationTest {
 
         verifyGivenTransactionsInsideAndOutsidePeriodWhenGetTransactionsByPeriodIsCalledThenItResponds200WithOnlyTransactionsInside(
                 result, inside);
+    }
+
+    @Test
+    @DisplayName("Given a transaction owned by another user When GET /transactions/{category} is called Then it returns an empty list")
+    void givenTransactionOwnedByAnotherUserWhenGetTransactionsByCategoryIsCalledThenItReturnsAnEmptyList() throws Exception {
+        final var otherOwnerTransaction = defaultTransaction()
+                .set(field(Transaction::getOwnerId), OWNER_ID)
+                .create();
+        final var secondUser = defaultAuthenticatedUser()
+                .set(field(AuthenticatedUser::id), new UserAccountId(SECOND_OWNER_UUID))
+                .create();
+        setupGivenTransactionOwnedByAnotherUserWhenGetTransactionsByCategoryIsCalledThenItReturnsAnEmptyList(
+                otherOwnerTransaction);
+
+        final var result = mockMvc.perform(get("/transactions/{category}", CATEGORY)
+                .with(user(secondUser)));
+
+        verifyGivenTransactionOwnedByAnotherUserWhenGetTransactionsByCategoryIsCalledThenItReturnsAnEmptyList(result);
+    }
+
+    @Test
+    @DisplayName("Given transactions of two users When GET /transactions/summary is called Then it sums only the authenticated user transactions")
+    void givenTransactionsOfTwoUsersWhenGetTransactionsSummaryIsCalledThenItSumsOnlyTheAuthenticatedUserTransactions() throws Exception {
+        final var firstOwnerTransaction = defaultTransaction()
+                .set(field(Transaction::getOwnerId), OWNER_ID)
+                .set(field(Transaction::getAmount), 8000L)
+                .create();
+        final var secondOwnerTransaction = defaultTransaction()
+                .set(field(Transaction::getOwnerId), SECOND_OWNER_ID)
+                .set(field(Transaction::getAmount), 4000L)
+                .create();
+        final var secondUser = defaultAuthenticatedUser()
+                .set(field(AuthenticatedUser::id), new UserAccountId(SECOND_OWNER_UUID))
+                .create();
+        setupGivenTransactionsOfTwoUsersWhenGetTransactionsSummaryIsCalledThenItSumsOnlyTheAuthenticatedUserTransactions(
+                firstOwnerTransaction, secondOwnerTransaction);
+
+        final var result = mockMvc.perform(get("/transactions/summary")
+                .with(user(secondUser))
+                .param("category", CATEGORY.name()));
+
+        verifyGivenTransactionsOfTwoUsersWhenGetTransactionsSummaryIsCalledThenItSumsOnlyTheAuthenticatedUserTransactions(
+                result);
+    }
+
+    @Test
+    @DisplayName("Given transactions of two users in the same period When GET /transactions is called Then it returns only the authenticated user transaction")
+    void givenTransactionsOfTwoUsersInSamePeriodWhenGetTransactionsIsCalledThenItReturnsOnlyTheAuthenticatedUserTransaction() throws Exception {
+        final var firstOwnerTransaction = defaultTransaction()
+                .set(field(Transaction::getOwnerId), OWNER_ID)
+                .create();
+        final var secondOwnerTransaction = defaultTransaction()
+                .set(field(Transaction::getOwnerId), SECOND_OWNER_ID)
+                .create();
+        final var secondUser = defaultAuthenticatedUser()
+                .set(field(AuthenticatedUser::id), new UserAccountId(SECOND_OWNER_UUID))
+                .create();
+        setupGivenTransactionsOfTwoUsersInSamePeriodWhenGetTransactionsIsCalledThenItReturnsOnlyTheAuthenticatedUserTransaction(
+                firstOwnerTransaction, secondOwnerTransaction);
+
+        final var result = mockMvc.perform(get("/transactions")
+                .with(user(secondUser))
+                .param("from", "2026-10-01")
+                .param("to", "2026-10-31"));
+
+        verifyGivenTransactionsOfTwoUsersInSamePeriodWhenGetTransactionsIsCalledThenItReturnsOnlyTheAuthenticatedUserTransaction(
+                result, secondOwnerTransaction);
+    }
+
+    @Test
+    @DisplayName("Given an owner field in the request When POST /transactions is called Then it is ignored and no response exposes the owner")
+    void givenOwnerFieldInRequestWhenPostTransactionsIsCalledThenItIsIgnoredAndNoResponseExposesTheOwner() throws Exception {
+        final var request = defaultTransactionRequest().create();
+        final var body = """
+                {
+                  "description": "%s",
+                  "amount": %d,
+                  "category": "%s",
+                  "ownerId": "%s"
+                }
+                """.formatted(request.description(), request.amount(), request.category(), SECOND_OWNER_UUID);
+
+        final var result = mockMvc.perform(post("/transactions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body));
+
+        verifyGivenOwnerFieldInRequestWhenPostTransactionsIsCalledThenItIsIgnoredAndNoResponseExposesTheOwner(result);
     }
 
     @Test
@@ -434,6 +528,57 @@ class TransactionApiIntegrationTest {
                                 fieldWithPath("[].amount").description("Valor em reais com duas casas decimais"),
                                 fieldWithPath("[].createdAt").description("Data e hora de criação em UTC (ISO-8601)")
                         )));
+    }
+
+    private void setupGivenTransactionOwnedByAnotherUserWhenGetTransactionsByCategoryIsCalledThenItReturnsAnEmptyList(
+            final Transaction transaction) {
+        repository.save(transaction);
+    }
+
+    private void verifyGivenTransactionOwnedByAnotherUserWhenGetTransactionsByCategoryIsCalledThenItReturnsAnEmptyList(
+            final ResultActions actual) throws Exception {
+        actual.andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    private void setupGivenTransactionsOfTwoUsersWhenGetTransactionsSummaryIsCalledThenItSumsOnlyTheAuthenticatedUserTransactions(
+            final Transaction firstOwnerTransaction, final Transaction secondOwnerTransaction) {
+        repository.save(firstOwnerTransaction);
+        repository.save(secondOwnerTransaction);
+    }
+
+    private void verifyGivenTransactionsOfTwoUsersWhenGetTransactionsSummaryIsCalledThenItSumsOnlyTheAuthenticatedUserTransactions(
+            final ResultActions actual) throws Exception {
+        actual.andExpect(status().isOk())
+                .andExpect(jsonPath("$.count").value(1))
+                .andExpect(content().string(containsString("\"total\":40.00")));
+    }
+
+    private void setupGivenTransactionsOfTwoUsersInSamePeriodWhenGetTransactionsIsCalledThenItReturnsOnlyTheAuthenticatedUserTransaction(
+            final Transaction firstOwnerTransaction, final Transaction secondOwnerTransaction) {
+        repository.save(firstOwnerTransaction);
+        repository.save(secondOwnerTransaction);
+        jdbcTemplate.update(
+                "UPDATE transaction_entity SET created_at = ? WHERE id IN (UUID_TO_BIN(?), UUID_TO_BIN(?))",
+                Instant.parse("2026-10-15T12:00:00Z"),
+                firstOwnerTransaction.getId().uuid().toString(),
+                secondOwnerTransaction.getId().uuid().toString());
+    }
+
+    private void verifyGivenTransactionsOfTwoUsersInSamePeriodWhenGetTransactionsIsCalledThenItReturnsOnlyTheAuthenticatedUserTransaction(
+            final ResultActions actual, final Transaction expected) throws Exception {
+        actual.andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(expected.getId().uuid().toString()))
+                .andExpect(jsonPath("$[0].ownerId").doesNotExist());
+    }
+
+    private void verifyGivenOwnerFieldInRequestWhenPostTransactionsIsCalledThenItIsIgnoredAndNoResponseExposesTheOwner(
+            final ResultActions actual) throws Exception {
+        actual.andExpect(status().isCreated())
+                .andExpect(jsonPath("$.ownerId").doesNotExist());
+        assertThat(repository.findAllByOwnerIdAndCategory(OWNER_ID, CATEGORY)).hasSize(1);
+        assertThat(repository.findAllByOwnerIdAndCategory(SECOND_OWNER_ID, CATEGORY)).isEmpty();
     }
 
     private void verifyGivenStartDateAfterEndDateWhenGetTransactionsByPeriodIsCalledThenItResponds400WithErrorMessage(
