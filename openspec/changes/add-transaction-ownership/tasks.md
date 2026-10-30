@@ -2,6 +2,18 @@
 
 > Nota sobre a suíte: as assinaturas de domínio, repositório e casos de uso mudam juntas, então a suíte fica vermelha da tarefa 2.1 até a 5.3, quando os últimos chamadores são atualizados. Nenhum commit é feito com a suíte vermelha; os grupos 2 a 5 formam um commit único.
 
+## Armadilhas conhecidas
+
+Cada item abaixo custou retrabalho no ciclo anterior deste projeto. Leia antes de começar.
+
+- **Teste unitário verde não prova que o contexto do Spring sobe.** Testes com Mockito não iniciam contexto, então uma dependência faltando só aparece nos `@SpringBootTest`. Ao mudar injeção de dependência, rode a suíte inteira, não apenas o teste da classe alterada.
+- **`--tests` roda um subconjunto e esconde quebra de compilação em outros testes.** Antes de dar um grupo por concluído, rode `./gradlew test` sem filtro pelo menos uma vez.
+- **`@WithMockUser` não serve mais.** Ele produz um principal do tipo `User` do Spring Security, que não é um `AuthenticatedUser` e não carrega `UserAccountId`. Use `SecurityMockMvcRequestPostProcessors.user(...)` com um `AuthenticatedUser` real (tarefa 6.1).
+- **MockMvc montado à mão precisa de `.apply(springSecurity())`.** Sem isso a cadeia de filtros do Spring Security é ignorada e o teste fica verde sem exercitar segurança nenhuma.
+- **`@SpringBootTest` exige as três propriedades** `spring.ai.openai.api-key`, `app.admin.username` e `app.admin.password`, conforme `docs/padrao-de-testes.md`.
+- **Mensagem de exceção não deve usar o `toString` de um record.** Use `id.uuid()`, senão a resposta HTTP mostra `OwnerId[uuid=...]`.
+- **Quando a implementação revelar um furo no `design.md`, corrija o `design.md`** e explique a correção, em vez de contornar no código.
+
 ## 1. Descarte dos dados de desenvolvimento
 
 - [ ] 1.1 Rodar `docker compose down -v` na raiz do projeto para descartar o volume `transaction_data`; verificar com `docker volume ls` que o volume não existe mais
